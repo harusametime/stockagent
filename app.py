@@ -128,7 +128,17 @@ with tab1:
         with st.spinner("Running backtest..."):
             try:
                 # Initialize backtesting engine
-                engine = BacktestingEngine(initial_capital=initial_capital)
+                # For range_bound strategy, disable stop-loss and take-profit
+                if strategy_name == "range_bound":
+                    engine = BacktestingEngine(
+                        initial_capital=initial_capital,
+                        transaction_cost=0.002,
+                        slippage=0.001,
+                        stop_loss=0.0,  # NO STOP LOSS for range-bound
+                        take_profit=0.0  # NO TAKE PROFIT for range-bound
+                    )
+                else:
+                    engine = BacktestingEngine(initial_capital=initial_capital)
                 
                 # Run backtest
                 result = engine.run_backtest(
