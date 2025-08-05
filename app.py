@@ -191,11 +191,41 @@ with tab1:
                         yaxis='y2'
                     ))
                 
-                # Add horizontal lines
-                fig.add_hline(y=initial_capital, line_dash="dash", line_color="gray", 
-                            annotation_text="Initial Capital", yaxis='y')
-                fig.add_hline(y=0, line_dash="dash", line_color="gray", 
-                            annotation_text="Break-even", yaxis='y2')
+                # Add horizontal lines using shapes
+                fig.add_shape(
+                    type="line",
+                    x0=portfolio_df['date'].min(),
+                    x1=portfolio_df['date'].max(),
+                    y0=initial_capital,
+                    y1=initial_capital,
+                    line=dict(color="gray", dash="dash"),
+                    yref="y"
+                )
+                fig.add_annotation(
+                    x=portfolio_df['date'].max(),
+                    y=initial_capital,
+                    text="Initial Capital",
+                    showarrow=False,
+                    yref="y"
+                )
+                
+                # Add break-even line for P&L
+                fig.add_shape(
+                    type="line",
+                    x0=portfolio_df['date'].min(),
+                    x1=portfolio_df['date'].max(),
+                    y0=0,
+                    y1=0,
+                    line=dict(color="gray", dash="dash"),
+                    yref="y2"
+                )
+                fig.add_annotation(
+                    x=portfolio_df['date'].max(),
+                    y=0,
+                    text="Break-even",
+                    showarrow=False,
+                    yref="y2"
+                )
                 
                 # Update layout with dual y-axes
                 fig.update_layout(
