@@ -129,35 +129,181 @@ with tab1:
                 with col4:
                     st.metric("Max Drawdown", f"{result['max_drawdown']:.2f}%")
                 
-                # Portfolio value chart
-                st.subheader("Portfolio Value Over Time")
+                # P&L metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Realized P&L", f"¥{result.get('realized_pnl', 0):,.0f}")
+                with col2:
+                    st.metric("Unrealized P&L", f"¥{result.get('unrealized_pnl', 0):,.0f}")
+                with col3:
+                    st.metric("Win Rate", f"{result.get('win_rate', 0):.1f}%")
+                with col4:
+                    st.metric("Total Trades", f"{result.get('total_trades', 0)}")
+                
+                # Portfolio value and P&L chart
+                st.subheader("Portfolio Value and P&L Over Time")
                 portfolio_df = pd.DataFrame(result['portfolio_values'])
                 portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
                 
+                # Create figure with secondary y-axis
                 fig = go.Figure()
+                
+                # Portfolio Value (primary y-axis)
                 fig.add_trace(go.Scatter(
                     x=portfolio_df['date'],
                     y=portfolio_df['portfolio_value'],
                     mode='lines',
                     name='Portfolio Value',
-                    line=dict(color='blue', width=2)
+                    line=dict(color='blue', width=2),
+                    yaxis='y'
                 ))
-                fig.add_hline(y=initial_capital, line_dash="dash", line_color="red", 
-                            annotation_text="Initial Capital")
+                
+                # Realized P&L (secondary y-axis)
+                if 'realized_pnl' in portfolio_df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=portfolio_df['date'],
+                        y=portfolio_df['realized_pnl'],
+                        mode='lines',
+                        name='Realized P&L',
+                        line=dict(color='green', width=2, dash='dash'),
+                        yaxis='y2'
+                    ))
+                
+                # Unrealized P&L (secondary y-axis)
+                if 'unrealized_pnl' in portfolio_df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=portfolio_df['date'],
+                        y=portfolio_df['unrealized_pnl'],
+                        mode='lines',
+                        name='Unrealized P&L',
+                        line=dict(color='orange', width=2, dash='dot'),
+                        yaxis='y2'
+                    ))
+                
+                # Total P&L (secondary y-axis)
+                if 'total_pnl' in portfolio_df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=portfolio_df['date'],
+                        y=portfolio_df['total_pnl'],
+                        mode='lines',
+                        name='Total P&L',
+                        line=dict(color='red', width=2),
+                        yaxis='y2'
+                    ))
+                
+                # Add horizontal lines
+                fig.add_hline(y=initial_capital, line_dash="dash", line_color="gray", 
+                            annotation_text="Initial Capital", yaxis='y')
+                fig.add_hline(y=0, line_dash="dash", line_color="gray", 
+                            annotation_text="Break-even", yaxis='y2')
+                
+                # Update layout with dual y-axes
                 fig.update_layout(
-                    title="Portfolio Value Over Time",
+                    title="Portfolio Value and P&L Over Time",
                     xaxis_title="Date",
-                    yaxis_title="Portfolio Value (¥)",
-                    height=400
+                    yaxis=dict(
+                        title="Portfolio Value (¥)",
+                        side="left",
+                        showgrid=True
+                    ),
+                    yaxis2=dict(
+                        title="P&L (¥)",
+                        side="right",
+                        overlaying="y",
+                        showgrid=False
+                    ),
+                    height=500,
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=1.02,
+                        xanchor="right",
+                        x=1
+                    )
                 )
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Trade history
-                st.subheader("Trade History")
+                # P&L Analysis
+                st.subheader("💰 P&L Analysis")
+                
                 if result['trade_history']:
                     trades_df = pd.DataFrame(result['trade_history'])
                     trades_df['date'] = pd.to_datetime(trades_df['date'])
-                    st.dataframe(trades_df, use_container_width=True)
+                    
+                    # Separate buy and sell trades
+                    buy_trades = trades_df[trades_df['action'] == 'BUY']
+                    sell_trades = trades_df[trades_df['action'] == 'SELL']
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Buy Trades", len(buy_trades))
+                    with col2:
+                        st.metric("Sell Trades", len(sell_trades))
+                    with col3:
+                        if len(sell_trades) > 0:
+                            profitable_trades = sell_trades[sell_trades['pnl'] > 0]
+                            st.metric("Profitable Trades", len(profitable_trades))
+                    with col4:
+                        if len(sell_trades) > 0:
+                            losing_trades = sell_trades[sell_trades['pnl'] < 0]
+                            st.metric("Losing Trades", len(losing_trades))
+                    
+                    # P&L distribution chart
+                    if len(sell_trades) > 0 and 'pnl' in sell_trades.columns:
+                        st.subheader("P&L Distribution")
+                        
+                        # Create P&L histogram
+                        fig_pnl = go.Figure()
+                        fig_pnl.add_trace(go.Histogram(
+                            x=sell_trades['pnl'],
+                            nbinsx=20,
+                            name='Trade P&L',
+                            marker_color='lightblue'
+                        ))
+                        fig_pnl.add_vline(x=0, line_dash="dash", line_color="red", 
+                                         annotation_text="Break-even")
+                        fig_pnl.update_layout(
+                            title="Distribution of Trade P&L",
+                            xaxis_title="P&L (¥)",
+                            yaxis_title="Number of Trades",
+                            height=300
+                        )
+                        st.plotly_chart(fig_pnl, use_container_width=True)
+                        
+                        # P&L over time
+                        st.subheader("P&L Over Time")
+                        fig_pnl_time = go.Figure()
+                        fig_pnl_time.add_trace(go.Scatter(
+                            x=sell_trades['date'],
+                            y=sell_trades['pnl'].cumsum(),
+                            mode='lines+markers',
+                            name='Cumulative P&L',
+                            line=dict(color='green', width=2)
+                        ))
+                        fig_pnl_time.add_hline(y=0, line_dash="dash", line_color="gray", 
+                                             annotation_text="Break-even")
+                        fig_pnl_time.update_layout(
+                            title="Cumulative P&L Over Time",
+                            xaxis_title="Date",
+                            yaxis_title="Cumulative P&L (¥)",
+                            height=300
+                        )
+                        st.plotly_chart(fig_pnl_time, use_container_width=True)
+                
+                # Trade history
+                st.subheader("📋 Trade History")
+                if result['trade_history']:
+                    trades_df = pd.DataFrame(result['trade_history'])
+                    trades_df['date'] = pd.to_datetime(trades_df['date'])
+                    
+                    # Format the dataframe for display
+                    display_df = trades_df.copy()
+                    if 'pnl' in display_df.columns:
+                        display_df['pnl'] = display_df['pnl'].apply(lambda x: f"¥{x:,.0f}" if pd.notna(x) else "N/A")
+                    if 'realized_pnl' in display_df.columns:
+                        display_df['realized_pnl'] = display_df['realized_pnl'].apply(lambda x: f"¥{x:,.0f}" if pd.notna(x) else "N/A")
+                    
+                    st.dataframe(display_df, use_container_width=True)
                     
                     # Download trade history
                     csv = trades_df.to_csv(index=False)
