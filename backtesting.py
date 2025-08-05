@@ -27,6 +27,14 @@ class BacktestingEngine:
         self.take_profit = take_profit
         self.position_entry_prices = {}  # Track entry prices for stop-loss/take-profit
         
+        # P&L tracking
+        self.realized_pnl = 0.0  # Total realized P&L
+        self.unrealized_pnl = 0.0  # Current unrealized P&L
+        self.total_trades_pnl = 0.0  # P&L from all trades
+        self.winning_trades = 0
+        self.losing_trades = 0
+        self.position_pnl = {}  # Track P&L per position
+        
     def get_historical_data(self, symbols: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
         """
         Fetch historical data from Yahoo Finance
@@ -98,6 +106,13 @@ class BacktestingEngine:
                 if symbol not in self.position_entry_prices or self.positions[symbol] == quantity:
                     self.position_entry_prices[symbol] = execution_price
                 
+                # Initialize position P&L tracking
+                if symbol not in self.position_pnl:
+                    self.position_pnl[symbol] = {'total_cost': 0, 'total_quantity': 0}
+                
+                self.position_pnl[symbol]['total_cost'] += total_cost
+                self.position_pnl[symbol]['total_quantity'] += quantity
+                
                 self.trade_history.append({
                     'date': date,
                     'symbol': symbol,
@@ -106,7 +121,9 @@ class BacktestingEngine:
                     'price': execution_price,
                     'cost': total_cost,
                     'transaction_fee': transaction_fee,
-                    'slippage_cost': quantity * price * self.slippage
+                    'slippage_cost': quantity * price * self.slippage,
+                    'pnl': 0.0,  # No P&L on buy
+                    'realized_pnl': 0.0
                 })
         elif action == 'SELL':
             if self.positions[symbol] >= quantity:
@@ -114,8 +131,30 @@ class BacktestingEngine:
                 transaction_fee = gross_revenue * self.transaction_cost
                 net_revenue = gross_revenue - transaction_fee
                 
+                # Calculate realized P&L
+                if symbol in self.position_pnl and self.position_pnl[symbol]['total_quantity'] > 0:
+                    avg_cost = self.position_pnl[symbol]['total_cost'] / self.position_pnl[symbol]['total_quantity']
+                    realized_pnl = (execution_price - avg_cost) * quantity
+                    total_cost_for_quantity = avg_cost * quantity
+                    
+                    # Update position tracking
+                    self.position_pnl[symbol]['total_cost'] -= total_cost_for_quantity
+                    self.position_pnl[symbol]['total_quantity'] -= quantity
+                    
+                    # Update P&L statistics
+                    self.realized_pnl += realized_pnl
+                    self.total_trades_pnl += realized_pnl
+                    
+                    if realized_pnl > 0:
+                        self.winning_trades += 1
+                    elif realized_pnl < 0:
+                        self.losing_trades += 1
+                else:
+                    realized_pnl = 0.0
+                
                 self.current_capital += net_revenue
                 self.positions[symbol] -= quantity
+                
                 self.trade_history.append({
                     'date': date,
                     'symbol': symbol,
@@ -124,7 +163,9 @@ class BacktestingEngine:
                     'price': execution_price,
                     'revenue': net_revenue,
                     'transaction_fee': transaction_fee,
-                    'slippage_cost': quantity * price * self.slippage
+                    'slippage_cost': quantity * price * self.slippage,
+                    'pnl': realized_pnl,
+                    'realized_pnl': realized_pnl
                 })
     
     def calculate_portfolio_value(self, current_prices: Dict[str, float]) -> float:
@@ -136,6 +177,21 @@ class BacktestingEngine:
             if symbol in current_prices:
                 portfolio_value += quantity * current_prices[symbol]
         return portfolio_value
+    
+    def calculate_unrealized_pnl(self, current_prices: Dict[str, float]) -> float:
+        """
+        Calculate unrealized P&L for current positions
+        """
+        unrealized_pnl = 0.0
+        
+        for symbol, quantity in self.positions.items():
+            if quantity > 0 and symbol in current_prices and symbol in self.position_pnl:
+                current_price = current_prices[symbol]
+                if self.position_pnl[symbol]['total_quantity'] > 0:
+                    avg_cost = self.position_pnl[symbol]['total_cost'] / self.position_pnl[symbol]['total_quantity']
+                    unrealized_pnl += (current_price - avg_cost) * quantity
+        
+        return unrealized_pnl
     
     def check_risk_management(self, symbol: str, current_price: float, date: datetime) -> List[Dict]:
         """
@@ -226,13 +282,20 @@ class BacktestingEngine:
                     date=date
                 )
             
-            # Record portfolio value
+            # Calculate P&L
+            unrealized_pnl = self.calculate_unrealized_pnl(current_prices)
+            self.unrealized_pnl = unrealized_pnl
+            
+            # Record portfolio value with P&L
             portfolio_value = self.calculate_portfolio_value(current_prices)
             self.portfolio_values.append({
                 'date': date,
                 'portfolio_value': portfolio_value,
                 'cash': self.current_capital,
-                'positions': self.positions.copy()
+                'positions': self.positions.copy(),
+                'realized_pnl': self.realized_pnl,
+                'unrealized_pnl': unrealized_pnl,
+                'total_pnl': self.realized_pnl + unrealized_pnl
             })
         
         # Calculate performance metrics
@@ -257,7 +320,13 @@ class BacktestingEngine:
             'max_drawdown': max_drawdown,
             'trade_history': self.trade_history,
             'portfolio_values': self.portfolio_values,
-            'total_trades': len(self.trade_history)
+            'total_trades': len(self.trade_history),
+            'realized_pnl': self.realized_pnl,
+            'unrealized_pnl': self.unrealized_pnl,
+            'total_trades_pnl': self.total_trades_pnl,
+            'winning_trades': self.winning_trades,
+            'losing_trades': self.losing_trades,
+            'win_rate': self.winning_trades / max(1, self.winning_trades + self.losing_trades) * 100
         }
     
     def plot_results(self, results: Dict):
