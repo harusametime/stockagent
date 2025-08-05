@@ -296,6 +296,85 @@ class TradingAlgorithms:
         return signals
     
     @staticmethod
+    def range_bound_strategy(data: Dict[str, pd.DataFrame],
+                           current_prices: Dict[str, float],
+                           lookback_period: int = 60,  # 3 months for range calculation
+                           range_threshold: float = 0.15,  # 15% range threshold
+                           oversold_percentile: float = 20,  # Buy at 20th percentile
+                           overbought_percentile: float = 80,  # Sell at 80th percentile
+                           position_size: float = 0.2,  # 20% of capital per position
+                           no_stop_loss: bool = True) -> List[Dict]:
+        """
+        Range-bound strategy specifically designed for Nikkei 225's range-bound behavior
+        - No stop-losses (hold through dips)
+        - Buy at range lows, sell at range highs
+        - Position sizing based on range volatility
+        - Patience-based approach for range-bound markets
+        """
+        signals = []
+        
+        for symbol, df in data.items():
+            if len(df) < lookback_period:
+                continue
+                
+            # Calculate range metrics
+            recent_data = df.tail(lookback_period)
+            price_range = recent_data['Close'].max() - recent_data['Close'].min()
+            range_percentage = price_range / recent_data['Close'].min()
+            
+            # Calculate percentile levels
+            low_percentile = recent_data['Close'].quantile(oversold_percentile / 100)
+            high_percentile = recent_data['Close'].quantile(overbought_percentile / 100)
+            current_price = current_prices[symbol]
+            
+            # Check if market is in range-bound mode
+            is_range_bound = range_percentage <= range_threshold
+            
+            if is_range_bound:
+                # Range-bound trading logic
+                if current_price <= low_percentile:
+                    # Buy at range lows - no stop loss
+                    quantity = int(200000 / current_prices[symbol])  # Larger position for range trading
+                    signals.append({
+                        'symbol': symbol,
+                        'action': 'BUY',
+                        'quantity': quantity,
+                        'reason': f'Range-bound buy at {oversold_percentile}th percentile ({current_price:.0f} <= {low_percentile:.0f})'
+                    })
+                elif current_price >= high_percentile:
+                    # Sell at range highs
+                    quantity = int(200000 / current_prices[symbol])
+                    signals.append({
+                        'symbol': symbol,
+                        'action': 'SELL',
+                        'quantity': quantity,
+                        'reason': f'Range-bound sell at {overbought_percentile}th percentile ({current_price:.0f} >= {high_percentile:.0f})'
+                    })
+            else:
+                # Trending market - use momentum signals
+                current_row = df.iloc[-1]
+                
+                # RSI for trend confirmation
+                if current_row['RSI'] < 30:
+                    quantity = int(150000 / current_prices[symbol])
+                    signals.append({
+                        'symbol': symbol,
+                        'action': 'BUY',
+                        'quantity': quantity,
+                        'reason': f'Trending market oversold RSI ({current_row["RSI"]:.1f})'
+                    })
+                elif current_row['RSI'] > 70:
+                    quantity = int(150000 / current_prices[symbol])
+                    signals.append({
+                        'symbol': symbol,
+                        'action': 'SELL',
+                        'quantity': quantity,
+                        'reason': f'Trending market overbought RSI ({current_row["RSI"]:.1f})'
+                    })
+        
+        return signals
+    
+    @staticmethod
     def combined_strategy(data: Dict[str, pd.DataFrame],
                         current_prices: Dict[str, float],
                         max_position_size: float = 0.15,  # 15% max position
@@ -353,6 +432,7 @@ STRATEGIES = {
     'pairs_trading': TradingAlgorithms.pairs_trading_strategy,
     'trend_following': TradingAlgorithms.trend_following_strategy,
     'volatility_breakout': TradingAlgorithms.volatility_breakout_strategy,
+    'range_bound': TradingAlgorithms.range_bound_strategy,
     'combined': TradingAlgorithms.combined_strategy
 }
 

@@ -96,6 +96,30 @@ with tab1:
             'long_window': long_window
         }
     
+    elif strategy_name == "range_bound":
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            lookback_period = st.slider("Lookback Period (days)", 30, 120, 60, key="backtest_lookback")
+        with col2:
+            range_threshold = st.slider("Range Threshold (%)", 0.10, 0.30, 0.15, 0.01, key="backtest_range_threshold")
+        with col3:
+            oversold_percentile = st.slider("Oversold Percentile", 10, 30, 20, key="backtest_oversold")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            overbought_percentile = st.slider("Overbought Percentile", 70, 90, 80, key="backtest_overbought")
+        with col2:
+            position_size = st.slider("Position Size (%)", 0.10, 0.30, 0.20, 0.01, key="backtest_position_size")
+        
+        strategy_params = {
+            'lookback_period': lookback_period,
+            'range_threshold': range_threshold,
+            'oversold_percentile': oversold_percentile,
+            'overbought_percentile': overbought_percentile,
+            'position_size': position_size,
+            'no_stop_loss': True
+        }
+    
     else:
         strategy_params = {}
     
@@ -402,6 +426,30 @@ KABUSAPI_PASSWORD=your_password
             live_strategy_params = {
                 'macd_threshold': live_macd_threshold,
                 'volume_threshold': live_volume_threshold
+            }
+        
+        elif live_strategy == "range_bound":
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                live_lookback_period = st.slider("Lookback Period (days)", 30, 120, 60, key="live_lookback")
+            with col2:
+                live_range_threshold = st.slider("Range Threshold (%)", 0.10, 0.30, 0.15, 0.01, key="live_range_threshold")
+            with col3:
+                live_oversold_percentile = st.slider("Oversold Percentile", 10, 30, 20, key="live_oversold")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                live_overbought_percentile = st.slider("Overbought Percentile", 70, 90, 80, key="live_overbought")
+            with col2:
+                live_position_size = st.slider("Position Size (%)", 0.10, 0.30, 0.20, 0.01, key="live_position_size")
+            
+            live_strategy_params = {
+                'lookback_period': live_lookback_period,
+                'range_threshold': live_range_threshold,
+                'oversold_percentile': live_oversold_percentile,
+                'overbought_percentile': live_overbought_percentile,
+                'position_size': live_position_size,
+                'no_stop_loss': True
             }
         
         else:
