@@ -11,12 +11,21 @@ class BacktestingEngine:
     Backtesting engine for trading algorithms on Nikkei 225 ETFs
     """
     
-    def __init__(self, initial_capital: float = 1000000):
+    def __init__(self, initial_capital: float = 1000000, 
+                 transaction_cost: float = 0.002,  # 0.2% transaction cost
+                 slippage: float = 0.001,  # 0.1% slippage
+                 stop_loss: float = 0.05,  # 5% stop loss
+                 take_profit: float = 0.15):  # 15% take profit
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
         self.positions = {'1579.T': 0, '1360.T': 0}
         self.trade_history = []
         self.portfolio_values = []
+        self.transaction_cost = transaction_cost
+        self.slippage = slippage
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
+        self.position_entry_prices = {}  # Track entry prices for stop-loss/take-profit
         
     def get_historical_data(self, symbols: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
         """
@@ -68,33 +77,54 @@ class BacktestingEngine:
     
     def execute_trade(self, symbol: str, action: str, quantity: int, price: float, date: datetime):
         """
-        Execute a trade and update portfolio
+        Execute a trade and update portfolio with transaction costs and slippage
         """
+        # Apply slippage
         if action == 'BUY':
-            cost = quantity * price
-            if cost <= self.current_capital:
-                self.current_capital -= cost
+            execution_price = price * (1 + self.slippage)  # Pay slightly more when buying
+        else:  # SELL
+            execution_price = price * (1 - self.slippage)  # Receive slightly less when selling
+        
+        if action == 'BUY':
+            gross_cost = quantity * execution_price
+            transaction_fee = gross_cost * self.transaction_cost
+            total_cost = gross_cost + transaction_fee
+            
+            if total_cost <= self.current_capital:
+                self.current_capital -= total_cost
                 self.positions[symbol] += quantity
+                
+                # Track entry price for new positions
+                if symbol not in self.position_entry_prices or self.positions[symbol] == quantity:
+                    self.position_entry_prices[symbol] = execution_price
+                
                 self.trade_history.append({
                     'date': date,
                     'symbol': symbol,
                     'action': action,
                     'quantity': quantity,
-                    'price': price,
-                    'cost': cost
+                    'price': execution_price,
+                    'cost': total_cost,
+                    'transaction_fee': transaction_fee,
+                    'slippage_cost': quantity * price * self.slippage
                 })
         elif action == 'SELL':
             if self.positions[symbol] >= quantity:
-                revenue = quantity * price
-                self.current_capital += revenue
+                gross_revenue = quantity * execution_price
+                transaction_fee = gross_revenue * self.transaction_cost
+                net_revenue = gross_revenue - transaction_fee
+                
+                self.current_capital += net_revenue
                 self.positions[symbol] -= quantity
                 self.trade_history.append({
                     'date': date,
                     'symbol': symbol,
                     'action': action,
                     'quantity': quantity,
-                    'price': price,
-                    'revenue': revenue
+                    'price': execution_price,
+                    'revenue': net_revenue,
+                    'transaction_fee': transaction_fee,
+                    'slippage_cost': quantity * price * self.slippage
                 })
     
     def calculate_portfolio_value(self, current_prices: Dict[str, float]) -> float:
@@ -106,6 +136,36 @@ class BacktestingEngine:
             if symbol in current_prices:
                 portfolio_value += quantity * current_prices[symbol]
         return portfolio_value
+    
+    def check_risk_management(self, symbol: str, current_price: float, date: datetime) -> List[Dict]:
+        """
+        Check for stop-loss and take-profit triggers
+        """
+        signals = []
+        
+        if symbol in self.positions and self.positions[symbol] > 0 and symbol in self.position_entry_prices:
+            entry_price = self.position_entry_prices[symbol]
+            current_return = (current_price - entry_price) / entry_price
+            
+            # Stop-loss trigger
+            if current_return <= -self.stop_loss:
+                signals.append({
+                    'symbol': symbol,
+                    'action': 'SELL',
+                    'quantity': self.positions[symbol],
+                    'reason': f'Stop-loss triggered: {current_return:.2%} loss'
+                })
+            
+            # Take-profit trigger
+            elif current_return >= self.take_profit:
+                signals.append({
+                    'symbol': symbol,
+                    'action': 'SELL',
+                    'quantity': self.positions[symbol],
+                    'reason': f'Take-profit triggered: {current_return:.2%} gain'
+                })
+        
+        return signals
     
     def run_backtest(self, 
                     trading_algorithm: Callable,
@@ -141,7 +201,22 @@ class BacktestingEngine:
             # Get trading signals from algorithm
             signals = trading_algorithm(current_data, current_prices, **algorithm_params)
             
-            # Execute trades based on signals
+            # Check for risk management triggers first
+            risk_signals = []
+            for symbol in symbols:
+                risk_signals.extend(self.check_risk_management(symbol, current_prices[symbol], date))
+            
+            # Execute risk management trades first
+            for signal in risk_signals:
+                self.execute_trade(
+                    symbol=signal['symbol'],
+                    action=signal['action'],
+                    quantity=signal['quantity'],
+                    price=current_prices[signal['symbol']],
+                    date=date
+                )
+            
+            # Execute regular trading signals
             for signal in signals:
                 self.execute_trade(
                     symbol=signal['symbol'],

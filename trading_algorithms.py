@@ -298,9 +298,11 @@ class TradingAlgorithms:
     @staticmethod
     def combined_strategy(data: Dict[str, pd.DataFrame],
                         current_prices: Dict[str, float],
+                        max_position_size: float = 0.15,  # 15% max position
+                        transaction_cost: float = 0.002,  # 0.2% transaction cost
                         **params) -> List[Dict]:
         """
-        Combined strategy using multiple signals
+        Improved combined strategy with proper risk management
         """
         signals = []
         
@@ -309,9 +311,10 @@ class TradingAlgorithms:
         momentum_signals = TradingAlgorithms.momentum_strategy(data, current_prices, **params)
         pairs_signals = TradingAlgorithms.pairs_trading_strategy(data, current_prices, **params)
         trend_signals = TradingAlgorithms.trend_following_strategy(data, current_prices, **params)
+        volatility_signals = TradingAlgorithms.volatility_breakout_strategy(data, current_prices, **params)
         
-        # Combine signals (avoid duplicates by symbol)
-        all_signals = mean_rev_signals + momentum_signals + pairs_signals + trend_signals
+        # Combine all signals
+        all_signals = mean_rev_signals + momentum_signals + pairs_signals + trend_signals + volatility_signals
         
         # Group by symbol and action
         signal_groups = {}
@@ -321,10 +324,25 @@ class TradingAlgorithms:
                 signal_groups[key] = []
             signal_groups[key].append(signal)
         
-        # Take the signal with highest quantity for each symbol-action pair
+        # Vote-based signal aggregation with risk management
         for (symbol, action), signal_list in signal_groups.items():
-            best_signal = max(signal_list, key=lambda x: x['quantity'])
-            signals.append(best_signal)
+            if len(signal_list) >= 2:  # Require at least 2 strategies to agree
+                # Calculate weighted average quantity (not max)
+                total_quantity = sum(signal['quantity'] for signal in signal_list)
+                avg_quantity = int(total_quantity / len(signal_list))
+                
+                # Apply position size limits
+                max_quantity = int(1000000 * max_position_size / current_prices[symbol])
+                final_quantity = min(avg_quantity, max_quantity)
+                
+                # Only trade if quantity is reasonable
+                if final_quantity > 0:
+                    signals.append({
+                        'symbol': symbol,
+                        'action': action,
+                        'quantity': final_quantity,
+                        'reason': f'Combined strategy: {len(signal_list)} strategies agree'
+                    })
         
         return signals
 

@@ -15,8 +15,8 @@ def main():
     
     # Define symbols and date range
     symbols = ['1579.T', '1360.T']
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')  # 1 year of data
+    end_date = '2025-08-05'  # Fixed end date
+    start_date = '2023-01-01'  # Fixed start date - 3 years of data
     
     print(f"Testing backtesting engine with symbols: {symbols}")
     print(f"Date range: {start_date} to {end_date}")
