@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  stockagent:
+    build: .
+    container_name: stockagent
+    ports:
+      - "8501:8501"
+    environment:
+      - KABUSAPI_HOST=${KABUSAPI_HOST:-localhost}
+      - KABUSAPI_PORT=${KABUSAPI_PORT:-18080}
+      - KABUSAPI_PASSWORD=${KABUSAPI_PASSWORD:-}
+      - INITIAL_CAPITAL=${INITIAL_CAPITAL:-1000000}
+      - MAX_POSITION_SIZE=${MAX_POSITION_SIZE:-500000}
+      - STOP_LOSS_PCT=${STOP_LOSS_PCT:-5}
+      - TAKE_PROFIT_PCT=${TAKE_PROFIT_PCT:-10}
+      - MAX_DAILY_TRADES=${MAX_DAILY_TRADES:-10}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a database for storing trading data
+  # postgres:
+  #   image: postgres:15
+  #   container_name: stockagent_db
+  #   environment:
+  #     POSTGRES_DB: stockagent
+  #     POSTGRES_USER: stockagent
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data: 

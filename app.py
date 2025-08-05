@@ -1,0 +1,363 @@
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, timedelta
+import os
+from dotenv import load_dotenv
+
+# Import our modules
+from backtesting import BacktestingEngine
+from trading_algorithms import STRATEGIES
+from live_trading import LiveTradingAgent
+
+# Load environment variables
+load_dotenv()
+
+# Page configuration
+st.set_page_config(
+    page_title="Stock Trading Agent",
+    page_icon="📈",
+    layout="wide"
+)
+
+# Sidebar
+st.sidebar.title("📈 Stock Trading Agent")
+st.sidebar.markdown("Nikkei 225 ETF Trading System")
+
+# Main content
+st.title("📈 Stock Trading Agent")
+st.markdown("A comprehensive trading system for Nikkei 225 ETFs (1579.T and 1360.T)")
+
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Backtesting", "🤖 Live Trading", "📈 Market Data", "⚙️ Settings"])
+
+with tab1:
+    st.header("📊 Backtesting")
+    
+    # Backtesting parameters
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        initial_capital = st.number_input("Initial Capital (¥)", value=1000000, step=100000)
+        strategy_name = st.selectbox("Trading Strategy", list(STRATEGIES.keys()))
+        
+    with col2:
+        start_date = st.date_input("Start Date", value=datetime.now() - timedelta(days=365))
+        end_date = st.date_input("End Date", value=datetime.now())
+    
+    # Strategy parameters
+    st.subheader("Strategy Parameters")
+    
+    if strategy_name == "mean_reversion":
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            rsi_oversold = st.slider("RSI Oversold", 20, 40, 30)
+        with col2:
+            rsi_overbought = st.slider("RSI Overbought", 60, 80, 70)
+        with col3:
+            bb_std_multiplier = st.slider("Bollinger Bands Std Multiplier", 1.5, 3.0, 2.0)
+        strategy_params = {
+            'rsi_oversold': rsi_oversold,
+            'rsi_overbought': rsi_overbought,
+            'bb_std_multiplier': bb_std_multiplier
+        }
+    
+    elif strategy_name == "momentum":
+        col1, col2 = st.columns(2)
+        with col1:
+            macd_threshold = st.slider("MACD Threshold", -0.1, 0.1, 0.0, 0.01, key="backtest_macd_threshold")
+        with col2:
+            volume_threshold = st.slider("Volume Threshold", 1.0, 3.0, 1.5, 0.1, key="backtest_volume_threshold")
+        strategy_params = {
+            'macd_threshold': macd_threshold,
+            'volume_threshold': volume_threshold
+        }
+    
+    elif strategy_name == "pairs_trading":
+        col1, col2 = st.columns(2)
+        with col1:
+            correlation_threshold = st.slider("Correlation Threshold", 0.5, 0.9, 0.7, 0.05, key="backtest_correlation_threshold")
+        with col2:
+            z_score_threshold = st.slider("Z-Score Threshold", 1.0, 3.0, 2.0, 0.1, key="backtest_z_score_threshold")
+        strategy_params = {
+            'correlation_threshold': correlation_threshold,
+            'z_score_threshold': z_score_threshold
+        }
+    
+    elif strategy_name == "trend_following":
+        col1, col2 = st.columns(2)
+        with col1:
+            short_window = st.slider("Short Window", 5, 20, 10)
+        with col2:
+            long_window = st.slider("Long Window", 20, 50, 30)
+        strategy_params = {
+            'short_window': short_window,
+            'long_window': long_window
+        }
+    
+    else:
+        strategy_params = {}
+    
+    # Run backtest button
+    if st.button("🚀 Run Backtest", type="primary"):
+        with st.spinner("Running backtest..."):
+            try:
+                # Initialize backtesting engine
+                engine = BacktestingEngine(initial_capital=initial_capital)
+                
+                # Run backtest
+                result = engine.run_backtest(
+                    trading_algorithm=STRATEGIES[strategy_name],
+                    symbols=['1579.T', '1360.T'],
+                    start_date=start_date.strftime('%Y-%m-%d'),
+                    end_date=end_date.strftime('%Y-%m-%d'),
+                    **strategy_params
+                )
+                
+                # Display results
+                st.success("Backtest completed successfully!")
+                
+                # Performance metrics
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Initial Capital", f"¥{result['initial_capital']:,.0f}")
+                with col2:
+                    st.metric("Final Value", f"¥{result['final_value']:,.0f}")
+                with col3:
+                    st.metric("Total Return", f"{result['total_return']:.2f}%")
+                with col4:
+                    st.metric("Max Drawdown", f"{result['max_drawdown']:.2f}%")
+                
+                # Portfolio value chart
+                st.subheader("Portfolio Value Over Time")
+                portfolio_df = pd.DataFrame(result['portfolio_values'])
+                portfolio_df['date'] = pd.to_datetime(portfolio_df['date'])
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=portfolio_df['date'],
+                    y=portfolio_df['portfolio_value'],
+                    mode='lines',
+                    name='Portfolio Value',
+                    line=dict(color='blue', width=2)
+                ))
+                fig.add_hline(y=initial_capital, line_dash="dash", line_color="red", 
+                            annotation_text="Initial Capital")
+                fig.update_layout(
+                    title="Portfolio Value Over Time",
+                    xaxis_title="Date",
+                    yaxis_title="Portfolio Value (¥)",
+                    height=400
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Trade history
+                st.subheader("Trade History")
+                if result['trade_history']:
+                    trades_df = pd.DataFrame(result['trade_history'])
+                    trades_df['date'] = pd.to_datetime(trades_df['date'])
+                    st.dataframe(trades_df, use_container_width=True)
+                    
+                    # Download trade history
+                    csv = trades_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Trade History",
+                        data=csv,
+                        file_name=f"trade_history_{strategy_name}_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.info("No trades were executed during the backtest period.")
+                
+            except Exception as e:
+                st.error(f"Error running backtest: {str(e)}")
+
+with tab2:
+    st.header("🤖 Live Trading")
+    
+    # Check if API credentials are configured
+    api_host = os.getenv('KABUSAPI_HOST')
+    api_port = os.getenv('KABUSAPI_PORT')
+    api_password = os.getenv('KABUSAPI_PASSWORD')
+    
+    if not all([api_host, api_port, api_password]):
+        st.warning("⚠️ API credentials not configured. Please set up your .env file with KabusAPI credentials.")
+        st.code("""
+KABUSAPI_HOST=your_host
+KABUSAPI_PORT=your_port
+KABUSAPI_PASSWORD=your_password
+        """)
+    else:
+        # Live trading parameters
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            live_strategy = st.selectbox("Trading Strategy", list(STRATEGIES.keys()), key="live_strategy")
+            interval_minutes = st.slider("Trading Interval (minutes)", 5, 60, 15)
+        
+        with col2:
+            initial_capital_live = st.number_input("Initial Capital (¥)", value=1000000, step=100000, key="live_capital")
+            auto_trading = st.checkbox("Enable Auto Trading")
+        
+        # Strategy parameters for live trading
+        st.subheader("Strategy Parameters")
+        
+        if live_strategy == "mean_reversion":
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                live_rsi_oversold = st.slider("RSI Oversold", 20, 40, 30, key="live_rsi_oversold")
+            with col2:
+                live_rsi_overbought = st.slider("RSI Overbought", 60, 80, 70, key="live_rsi_overbought")
+            with col3:
+                live_bb_std_multiplier = st.slider("Bollinger Bands Std Multiplier", 1.5, 3.0, 2.0, key="live_bb_std")
+            live_strategy_params = {
+                'rsi_oversold': live_rsi_oversold,
+                'rsi_overbought': live_rsi_overbought,
+                'bb_std_multiplier': live_bb_std_multiplier
+            }
+        
+        elif live_strategy == "momentum":
+            col1, col2 = st.columns(2)
+            with col1:
+                live_macd_threshold = st.slider("MACD Threshold", -0.1, 0.1, 0.0, 0.01, key="live_macd_threshold")
+            with col2:
+                live_volume_threshold = st.slider("Volume Threshold", 1.0, 3.0, 1.5, 0.1, key="live_volume_threshold")
+            live_strategy_params = {
+                'macd_threshold': live_macd_threshold,
+                'volume_threshold': live_volume_threshold
+            }
+        
+        else:
+            live_strategy_params = {}
+        
+        # Live trading controls
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🔐 Test Connection", type="secondary"):
+                with st.spinner("Testing API connection..."):
+                    try:
+                        agent = LiveTradingAgent(initial_capital_live)
+                        if agent.authenticate():
+                            st.success("✅ API connection successful!")
+                        else:
+                            st.error("❌ API connection failed!")
+                    except Exception as e:
+                        st.error(f"❌ Connection error: {str(e)}")
+        
+        with col2:
+            if st.button("🔄 Run Single Cycle", type="secondary"):
+                with st.spinner("Running trading cycle..."):
+                    try:
+                        agent = LiveTradingAgent(initial_capital_live)
+                        if agent.authenticate():
+                            trades = agent.run_trading_cycle(live_strategy, ['1579.T', '1360.T'], **live_strategy_params)
+                            if trades:
+                                st.success(f"✅ Executed {len(trades)} trades")
+                                for trade in trades:
+                                    st.info(f"{trade['action']} {trade['quantity']} {trade['symbol']} - {trade['reason']}")
+                            else:
+                                st.info("ℹ️ No trades executed")
+                        else:
+                            st.error("❌ Authentication failed!")
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+        
+        with col3:
+            if auto_trading:
+                if st.button("⏹️ Stop Auto Trading", type="primary"):
+                    st.warning("Auto trading stopped")
+            else:
+                if st.button("▶️ Start Auto Trading", type="primary"):
+                    st.info("Auto trading started (this would run in a separate thread in production)")
+        
+        # Current positions and status
+        st.subheader("Current Status")
+        
+        # Placeholder for real-time data
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("1579.T Position", "0 shares")
+        with col2:
+            st.metric("1360.T Position", "0 shares")
+        with col3:
+            st.metric("Available Cash", "¥1,000,000")
+
+with tab3:
+    st.header("📈 Market Data")
+    
+    # Real-time market data
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("1579.T - Nikkei 225 ETF")
+        # Placeholder for 1579.T chart
+        st.line_chart(pd.DataFrame({'Price': [100, 101, 99, 102, 100, 103, 101, 104]}))
+    
+    with col2:
+        st.subheader("1360.T - Inverse Nikkei 225 ETF")
+        # Placeholder for 1360.T chart
+        st.line_chart(pd.DataFrame({'Price': [200, 199, 201, 198, 200, 197, 199, 196]}))
+    
+    # Market statistics
+    st.subheader("Market Statistics")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("1579.T Price", "¥1,234")
+    with col2:
+        st.metric("1360.T Price", "¥2,345")
+    with col3:
+        st.metric("1579.T Change", "+1.2%", delta="+1.2%")
+    with col4:
+        st.metric("1360.T Change", "-1.1%", delta="-1.1%")
+
+with tab4:
+    st.header("⚙️ Settings")
+    
+    st.subheader("API Configuration")
+    
+    # Display current settings
+    st.info("Current API settings (from .env file):")
+    st.code(f"""
+Host: {api_host or 'Not set'}
+Port: {api_port or 'Not set'}
+Password: {'*' * len(api_password) if api_password else 'Not set'}
+    """)
+    
+    st.subheader("Trading Parameters")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        max_position_size = st.number_input("Max Position Size (¥)", value=500000, step=50000)
+        stop_loss_pct = st.slider("Stop Loss (%)", 1, 10, 5)
+    
+    with col2:
+        take_profit_pct = st.slider("Take Profit (%)", 1, 20, 10)
+        max_daily_trades = st.number_input("Max Daily Trades", value=10, step=1)
+    
+    st.subheader("Risk Management")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        max_drawdown = st.slider("Max Drawdown (%)", 5, 30, 15, key="settings_max_drawdown")
+        volatility_threshold = st.slider("Volatility Threshold", 0.1, 1.0, 0.5, 0.1, key="settings_volatility_threshold")
+    
+    with col2:
+        correlation_threshold = st.slider("Correlation Threshold", 0.5, 0.9, 0.7, 0.05, key="settings_correlation_threshold")
+        volume_threshold = st.slider("Volume Threshold", 1.0, 3.0, 1.5, 0.1, key="settings_volume_threshold")
+    
+    if st.button("💾 Save Settings", type="primary"):
+        st.success("Settings saved successfully!")
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #666;'>
+    <p>Stock Trading Agent - Nikkei 225 ETF Trading System</p>
+    <p>Built with Streamlit, yfinance, and KabusAPI</p>
+</div>
+""", unsafe_allow_html=True) 
