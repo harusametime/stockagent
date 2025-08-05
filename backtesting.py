@@ -43,6 +43,21 @@ class BacktestingEngine:
         for symbol in symbols:
             ticker = yf.Ticker(symbol)
             df = ticker.history(start=start_date, end=end_date)
+            
+            # Fix price data issue for 1579.T (multiply by 100 if prices are too low)
+            if symbol == '1579.T' and not df.empty:
+                # Check if prices are suspiciously low (less than 10 yen)
+                if df['Close'].mean() < 10:
+                    print(f"⚠️ WARNING: {symbol} prices seem too low. Multiplying by 100.")
+                    for col in ['Open', 'High', 'Low', 'Close']:
+                        df[col] = df[col] * 100
+                # Also check for individual low prices and fix them
+                for col in ['Open', 'High', 'Low', 'Close']:
+                    low_prices = df[col] < 10
+                    if low_prices.any():
+                        print(f"⚠️ Fixing individual low prices in {col}")
+                        df.loc[low_prices, col] = df.loc[low_prices, col] * 100
+            
             data[symbol] = df
         return data
     
