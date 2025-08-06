@@ -47,7 +47,7 @@ podman-compose --version
 
 ```powershell
 # Copy the example environment file
-copy env_example.txt .env
+copy .env.example .env
 
 # Edit with your API credentials
 notepad .env

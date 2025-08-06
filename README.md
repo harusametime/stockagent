@@ -82,12 +82,16 @@ make help
 
 ## Configuration
 
-Create a `.env` file with your API credentials:
+Copy the example environment file and configure your API credentials:
 
-```
-KABUSAPI_HOST=host.docker.internal
-KABUSAPI_ENV=dev  # Options: dev (port 18081) or prod (port 18080)
-KABUSAPI_PASSWORD=your_password
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit with your API credentials
+# KABUSAPI_HOST=host.docker.internal
+# KABUSAPI_ENV=dev  # Options: dev (port 18081) or prod (port 18080)
+# KABUSAPI_PASSWORD=your_password
 ```
 
 ### Environment Switching

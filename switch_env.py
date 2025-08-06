@@ -12,7 +12,7 @@ def read_env_file():
     env_file = Path('.env')
     if not env_file.exists():
         print("❌ .env file not found!")
-        print("💡 Please copy env_example.txt to .env first")
+        print("💡 Please copy .env.example to .env first")
         return None
     
     with open(env_file, 'r') as f:
