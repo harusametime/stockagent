@@ -4,7 +4,7 @@ This guide explains how to run StockAgent using **Podman** on Windows, which is 
 
 ## 🚀 Quick Start
 
-```bash
+```powershell
 # 1. Install Podman Desktop
 # Download from: https://podman-desktop.io/
 
@@ -13,11 +13,11 @@ git clone https://github.com/harusametime/stockagent.git
 cd stockagent
 
 # 3. Create environment file
-cp env_example.txt .env
+copy env_example.txt .env
 # Edit .env with your API credentials
 
-# 4. Quick start with Podman
-./podman-run.sh quick
+# 4. Quick start with Podman (PowerShell)
+.\podman-run.ps1 quick
 ```
 
 ## 📋 Prerequisites
@@ -35,7 +35,7 @@ cp env_example.txt .env
 
 ### 2. Verify Installation
 
-```bash
+```powershell
 # Check Podman version
 podman --version
 
@@ -45,56 +45,56 @@ podman-compose --version
 
 ### 3. Create Environment File
 
-```bash
+```powershell
 # Copy the example environment file
-cp env_example.txt .env
+copy env_example.txt .env
 
 # Edit with your API credentials
 notepad .env
 ```
 
-## 🛠️ Podman Commands
+## 🛠️ Podman Commands (PowerShell)
 
 ### Basic Commands
 
-```bash
+```powershell
 # Build image
-./podman-run.sh build
+.\podman-run.ps1 build
 
 # Start container
-./podman-run.sh start
+.\podman-run.ps1 start
 
 # Stop container
-./podman-run.sh stop
+.\podman-run.ps1 stop
 
 # View logs
-./podman-run.sh logs
+.\podman-run.ps1 logs
 
 # Quick start (build + start)
-./podman-run.sh quick
+.\podman-run.ps1 quick
 ```
 
 ### Advanced Commands
 
-```bash
+```powershell
 # Run tests
-./podman-run.sh test
+.\podman-run.ps1 test
 
 # Run backtesting
-./podman-run.sh backtest
+.\podman-run.ps1 backtest
 
 # Check status
-./podman-run.sh status
+.\podman-run.ps1 status
 
 # Clean up everything
-./podman-run.sh cleanup
+.\podman-run.ps1 cleanup
 ```
 
 ## 🐳 Podman Compose (Alternative)
 
 If you prefer using Podman Compose:
 
-```bash
+```powershell
 # Build and start with compose
 podman-compose up -d
 
@@ -112,14 +112,14 @@ podman-compose up -d --build
 
 Once running, access the application at:
 - **Streamlit App**: http://localhost:8501
-- **Container Logs**: `./podman-run.sh logs`
+- **Container Logs**: `.\podman-run.ps1 logs`
 
 ## 🔧 Troubleshooting
 
 ### Common Issues
 
 **1. Podman not found**
-```bash
+```powershell
 # Check if Podman is installed
 podman --version
 
@@ -128,24 +128,33 @@ podman --version
 ```
 
 **2. Port already in use**
-```bash
+```powershell
 # Check what's using port 8501
 netstat -ano | findstr :8501
 
-# Stop the process or change port in podman-run.sh
+# Stop the process or change port in podman-run.ps1
 ```
 
 **3. Permission denied**
-```bash
+```powershell
 # Run PowerShell as Administrator
 # Or use WSL2 for better compatibility
 ```
 
 **4. Build fails**
-```bash
+```powershell
 # Check Dockerfile syntax
 # Ensure all files are present
-# Try rebuilding: ./podman-run.sh cleanup && ./podman-run.sh build
+# Try rebuilding: .\podman-run.ps1 cleanup; .\podman-run.ps1 build
+```
+
+**5. PowerShell execution policy**
+```powershell
+# If you get execution policy error
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Or run the script directly
+powershell -ExecutionPolicy Bypass -File .\podman-run.ps1 quick
 ```
 
 ### Windows-Specific Notes
@@ -164,6 +173,11 @@ netstat -ano | findstr :8501
 - Some antivirus software may block Podman
 - Add exceptions for Podman Desktop
 - Temporarily disable real-time protection
+
+**4. PowerShell vs Bash**
+- Use `.\podman-run.ps1` for PowerShell
+- Use `./podman-run.sh` for WSL2/bash
+- Both scripts provide the same functionality
 
 ## 🆚 Podman vs Docker
 
@@ -191,20 +205,21 @@ netstat -ano | findstr :8501
 
 ### Migration from Docker
 
-```bash
+```powershell
 # If you have Docker containers running
 docker stop stockagent
 docker rm stockagent
 
 # Switch to Podman
-./podman-run.sh quick
+.\podman-run.ps1 quick
 ```
 
 ## 📁 File Structure
 
 ```
 stockagent/
-├── podman-run.sh          # Podman management script
+├── podman-run.ps1         # PowerShell script for Windows
+├── podman-run.sh          # Bash script for WSL2/Linux
 ├── podman-compose.yml     # Podman Compose configuration
 ├── Dockerfile             # Container definition
 ├── requirements.txt       # Python dependencies
@@ -218,9 +233,9 @@ stockagent/
 ## 🔍 Monitoring
 
 ### Container Status
-```bash
+```powershell
 # Check container status
-./podman-run.sh status
+.\podman-run.ps1 status
 
 # View running containers
 podman ps
@@ -230,7 +245,7 @@ podman ps -a
 ```
 
 ### System Resources
-```bash
+```powershell
 # Check system info
 podman system info
 
@@ -245,9 +260,9 @@ podman system prune
 
 ### Using Podman Compose
 
-```bash
+```powershell
 # Create production compose file
-cp podman-compose.yml podman-compose.prod.yml
+copy podman-compose.yml podman-compose.prod.yml
 
 # Edit for production settings
 # - Add environment variables
@@ -260,15 +275,15 @@ podman-compose -f podman-compose.prod.yml up -d
 
 ### Using Podman Run
 
-```bash
+```powershell
 # Production run command
-podman run -d \
-  --name stockagent-prod \
-  -p 8501:8501 \
-  -v ./data:/app/data \
-  -v ./logs:/app/logs \
-  --env-file .env \
-  --restart unless-stopped \
+podman run -d `
+  --name stockagent-prod `
+  -p 8501:8501 `
+  -v ./data:/app/data `
+  -v ./logs:/app/logs `
+  --env-file .env `
+  --restart unless-stopped `
   stockagent:latest
 ```
 
@@ -278,15 +293,17 @@ podman run -d \
 - **Podman Desktop**: https://podman-desktop.io/
 - **Podman Compose**: https://github.com/containers/podman-compose
 - **Windows WSL2**: https://docs.microsoft.com/en-us/windows/wsl/
+- **PowerShell Execution Policy**: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies
 
 ## 🤝 Support
 
 If you encounter issues:
 
-1. **Check the logs**: `./podman-run.sh logs`
+1. **Check the logs**: `.\podman-run.ps1 logs`
 2. **Verify installation**: `podman --version`
 3. **Check system resources**: `podman system info`
-4. **Try cleanup**: `./podman-run.sh cleanup`
+4. **Try cleanup**: `.\podman-run.ps1 cleanup`
+5. **Check execution policy**: `Get-ExecutionPolicy`
 
 ## 🎉 Success!
 
