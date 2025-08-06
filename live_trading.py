@@ -18,7 +18,7 @@ class KabusAPIClient:
     """
     
     def __init__(self):
-        self.host = os.getenv('KABUSAPI_HOST', 'localhost')
+        self.host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
         self.port = os.getenv('KABUSAPI_PORT', '18081')  # Changed to dev port
         self.password = os.getenv('KABUSAPI_PASSWORD', '')
         self.base_url = f"http://{self.host}:{self.port}/kabusapi"

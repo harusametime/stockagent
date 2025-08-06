@@ -53,6 +53,11 @@ copy env_example.txt .env
 notepad .env
 ```
 
+**Important Network Configuration:**
+- **Host**: Use `host.docker.internal` (not `localhost`) for container access to host services
+- **Port**: Use `18081` for development API, `18080` for production
+- **Password**: Your KabusAPI password
+
 ## 🛠️ Podman Commands (PowerShell)
 
 ### Basic Commands
@@ -125,6 +130,18 @@ podman --version
 
 # If not found, install Podman Desktop
 # Download from: https://podman-desktop.io/
+```
+
+**2. Network connectivity issues**
+```powershell
+# Test network connectivity from container
+python test_network_connectivity.py
+
+# Check if host.docker.internal resolves
+nslookup host.docker.internal
+
+# Verify KabusAPI is running on host
+netstat -an | findstr :18081
 ```
 
 **2. Port already in use**

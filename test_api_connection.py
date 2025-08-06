@@ -20,7 +20,7 @@ def test_api_connection():
     print("="*60)
     
     # Get configuration
-    host = os.getenv('KABUSAPI_HOST', 'localhost')
+    host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
     port = os.getenv('KABUSAPI_PORT', '18081')
     password = os.getenv('KABUSAPI_PASSWORD', '')
     
