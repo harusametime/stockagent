@@ -16,13 +16,25 @@ A comprehensive trading system for Nikkei 225 ETFs (1579.T and 1360.T) with back
 
 ## Installation
 
+### Quick Setup (Recommended)
+
+```bash
+# Run the setup script
+python setup.py
+
+# This will:
+# - Check Python version and dependencies
+# - Create .env file from .env.example
+# - Show next steps
+```
+
 ### Option 1: Local Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Option 2: Docker Installation (Recommended)
+### Option 2: Docker Installation
 
 ```bash
 # Build and start the application

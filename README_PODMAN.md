@@ -46,10 +46,11 @@ podman-compose --version
 ### 3. Create Environment File
 
 ```powershell
-# Copy the example environment file
-copy .env.example .env
+# Option A: Use setup script (recommended)
+python setup.py
 
-# Edit with your API credentials
+# Option B: Manual setup
+copy .env.example .env
 notepad .env
 ```
 
