@@ -94,7 +94,7 @@ start_podman() {
         -v ./data:/app/data \
         -v ./logs:/app/logs \
         --env-file .env \
-        --add-host host.docker.internal:host-gateway \
+        --add-host host.containers.internal:host-gateway \
         $IMAGE_NAME
     
     if [ $? -eq 0 ]; then

@@ -126,7 +126,7 @@ function Start-PodmanContainer {
         -v ./data:/app/data `
         -v ./logs:/app/logs `
         --env-file .env `
-        --add-host host.docker.internal:host-gateway `
+        --add-host host.containers.internal:host-gateway `
         $ImageName
     
     if ($LASTEXITCODE -eq 0) {

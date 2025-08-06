@@ -19,7 +19,7 @@ def test_network_connectivity():
     print("="*60)
     
     # Get configuration
-    host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
+    host = os.getenv('KABUSAPI_HOST', 'host.containers.internal')
     
     # Environment-based port configuration
     environment = os.getenv('KABUSAPI_ENV', 'dev').lower()
@@ -80,7 +80,7 @@ def test_api_endpoints():
     
     print(f"\n4️⃣ Testing API endpoints...")
     
-    host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
+    host = os.getenv('KABUSAPI_HOST', 'host.containers.internal')
     
     # Environment-based port configuration
     environment = os.getenv('KABUSAPI_ENV', 'dev').lower()

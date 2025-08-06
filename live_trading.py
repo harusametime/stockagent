@@ -18,7 +18,8 @@ class KabusAPIClient:
     """
     
     def __init__(self):
-        self.host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
+        # Try Podman's host.containers.internal first, then Docker's host.docker.internal
+        self.host = os.getenv('KABUSAPI_HOST', 'host.containers.internal')
         
         # Environment-based port configuration
         environment = os.getenv('KABUSAPI_ENV', 'dev').lower()

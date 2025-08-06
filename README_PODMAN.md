@@ -55,7 +55,7 @@ notepad .env
 ```
 
 **Important Network Configuration:**
-- **Host**: Use `host.docker.internal` (not `localhost`) for container access to host services
+- **Host**: Use `host.containers.internal` (not `localhost`) for container access to host services
 - **Environment**: Use `dev` (port 18081) or `prod` (port 18080)
 - **Password**: Your KabusAPI password
 
@@ -147,8 +147,8 @@ podman --version
 # Test network connectivity from container
 python test_network_connectivity.py
 
-# Check if host.docker.internal resolves
-nslookup host.docker.internal
+# Check if host.containers.internal resolves
+nslookup host.containers.internal
 
 # Verify KabusAPI is running on host (check both ports)
 netstat -an | findstr :18081

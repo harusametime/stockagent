@@ -7,7 +7,7 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - KABUSAPI_HOST=${KABUSAPI_HOST:-host.docker.internal}
+      - KABUSAPI_HOST=${KABUSAPI_HOST:-host.containers.internal}
       - KABUSAPI_ENV=${KABUSAPI_ENV:-dev}
       - KABUSAPI_PASSWORD=${KABUSAPI_PASSWORD:-}
       - INITIAL_CAPITAL=${INITIAL_CAPITAL:-1000000}
@@ -20,7 +20,7 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.containers.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
       interval: 30s
