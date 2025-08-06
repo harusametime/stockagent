@@ -88,6 +88,28 @@ def test_api_connection():
                 token = result.get('Token')
                 print(f"   ✅ Authentication successful!")
                 print(f"   🔑 Token: {token[:10]}..." if token else "   🔑 Token: None")
+                
+                # Test 4: Symbol info (if authentication successful)
+                if token:
+                    print(f"\n4️⃣ Testing symbol info...")
+                    try:
+                        symbol_url = f"{base_url}/symbol/1579@1"  # Nikkei 225 ETF
+                        symbol_headers = {'X-API-KEY': token}
+                        
+                        print(f"   📤 Getting symbol info for 1579@1")
+                        symbol_response = requests.get(symbol_url, headers=symbol_headers, timeout=10)
+                        
+                        print(f"   📡 Symbol response status: {symbol_response.status_code}")
+                        if symbol_response.status_code == 200:
+                            symbol_result = symbol_response.json()
+                            print(f"   ✅ Symbol info successful!")
+                            print(f"   📊 Symbol data: {symbol_result}")
+                        else:
+                            print(f"   ❌ Symbol info failed: {symbol_response.status_code}")
+                            print(f"   📡 Symbol response: {symbol_response.text}")
+                    except Exception as e:
+                        print(f"   ❌ Symbol info error: {str(e)}")
+                
                 return True
             else:
                 error_msg = result.get('ResultText', 'Unknown error')
