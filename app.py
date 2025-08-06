@@ -5,6 +5,8 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
+import threading
+import time
 
 # Import our modules
 from backtesting import BacktestingEngine
@@ -13,6 +15,16 @@ from live_trading import LiveTradingAgent
 
 # Load environment variables
 load_dotenv()
+
+# Initialize session state for auto-trading
+if 'auto_trading_active' not in st.session_state:
+    st.session_state.auto_trading_active = False
+if 'auto_trading_thread' not in st.session_state:
+    st.session_state.auto_trading_thread = None
+if 'trading_agent' not in st.session_state:
+    st.session_state.trading_agent = None
+if 'trading_logs' not in st.session_state:
+    st.session_state.trading_logs = []
 
 # Page configuration
 st.set_page_config(
@@ -499,17 +511,46 @@ KABUSAPI_PASSWORD=your_password
                         st.error(f"❌ Error: {str(e)}")
         
         with col3:
-            if auto_trading:
-                if st.button("⏹️ Stop Auto Trading", type="primary"):
-                    st.warning("Auto trading stopped")
+            # Auto trading controls with session state
+            if st.session_state.auto_trading_active:
+                if st.button("⏹️ Stop Auto Trading", type="primary", key="stop_auto_trading"):
+                    st.session_state.auto_trading_active = False
+                    if st.session_state.trading_agent:
+                        st.session_state.trading_agent.stop_trading()
+                    st.warning("🛑 Auto trading stopped")
+                    st.rerun()
             else:
-                if st.button("▶️ Start Auto Trading", type="primary"):
-                    st.info("Auto trading started (this would run in a separate thread in production)")
+                if st.button("▶️ Start Auto Trading", type="primary", key="start_auto_trading"):
+                    st.session_state.auto_trading_active = True
+                    st.success("🚀 Auto trading started!")
+                    
+                    # Initialize trading agent
+                    try:
+                        st.session_state.trading_agent = LiveTradingAgent(initial_capital_live)
+                        if st.session_state.trading_agent.authenticate():
+                            st.success("✅ Trading agent initialized successfully!")
+                        else:
+                            st.error("❌ Authentication failed!")
+                            st.session_state.auto_trading_active = False
+                    except Exception as e:
+                        st.error(f"❌ Error initializing trading agent: {str(e)}")
+                        st.session_state.auto_trading_active = False
+                    
+                    st.rerun()
         
         # Current positions and status
         st.subheader("Current Status")
         
-        # Placeholder for real-time data
+        # Auto trading status
+        if st.session_state.auto_trading_active:
+            st.success("🟢 Auto Trading: ACTIVE")
+            if st.session_state.trading_agent:
+                st.info(f"Strategy: {live_strategy}")
+                st.info(f"Interval: {interval_minutes} minutes")
+        else:
+            st.warning("🔴 Auto Trading: INACTIVE")
+        
+        # Real-time data
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("1579.T Position", "0 shares")
@@ -517,6 +558,12 @@ KABUSAPI_PASSWORD=your_password
             st.metric("1360.T Position", "0 shares")
         with col3:
             st.metric("Available Cash", "¥1,000,000")
+        
+        # Trading logs
+        if st.session_state.trading_logs:
+            st.subheader("📋 Recent Trading Activity")
+            for log in st.session_state.trading_logs[-5:]:  # Show last 5 logs
+                st.info(log)
 
 with tab3:
     st.header("📈 Market Data")

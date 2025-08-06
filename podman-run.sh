@@ -42,10 +42,27 @@ check_podman() {
     print_status "Podman is installed: $(podman --version)"
 }
 
+# Create required directories
+init_directories() {
+    print_status "Checking and creating required directories..."
+    
+    for dir in "./data" "./logs"; do
+        if [ ! -d "$dir" ]; then
+            mkdir -p "$dir"
+            print_status "Created directory: $dir"
+        else
+            print_status "Directory exists: $dir"
+        fi
+    done
+}
+
 # Build the Podman image
 build_podman() {
     print_header "Building Podman Image"
     check_podman
+    
+    # Initialize directories before building
+    init_directories
     
     print_status "Building stockagent image..."
     podman build -t $IMAGE_NAME .
@@ -190,6 +207,11 @@ cleanup_podman() {
 # Quick start - build and run
 quick_start_podman() {
     print_header "Quick Start - Build and Run"
+    
+    # Create data and logs directories first
+    print_status "Setting up directories..."
+    init_directories
+    
     build_podman
     start_podman
     print_status "🎉 StockAgent is ready!"
@@ -211,6 +233,7 @@ show_help() {
     echo "  backtest  - Run backtesting in container"
     echo "  status    - Show container and system status"
     echo "  cleanup   - Clean up all Podman resources"
+    echo "  init      - Initialize data and logs directories"
     echo "  quick     - Quick start (build + start)"
     echo "  help      - Show this help"
     echo
@@ -250,6 +273,9 @@ case "${1:-help}" in
         ;;
     cleanup)
         cleanup_podman
+        ;;
+    init)
+        init_directories
         ;;
     quick)
         quick_start_podman

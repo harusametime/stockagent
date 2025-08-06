@@ -53,6 +53,22 @@ function Test-Podman {
     }
 }
 
+# Create required directories
+function Initialize-Directories {
+    Write-Status "Checking and creating required directories..."
+    
+    $directories = @("./data", "./logs")
+    
+    foreach ($dir in $directories) {
+        if (-not (Test-Path $dir)) {
+            New-Item -ItemType Directory -Path $dir -Force
+            Write-Status "Created directory: $dir"
+        } else {
+            Write-Status "Directory exists: $dir"
+        }
+    }
+}
+
 # Build the Podman image
 function Build-PodmanImage {
     Write-Header "Building Podman Image"
@@ -60,6 +76,9 @@ function Build-PodmanImage {
     if (-not (Test-Podman)) {
         exit 1
     }
+    
+    # Initialize directories before building
+    Initialize-Directories
     
     Write-Status "Building stockagent image..."
     podman build -t $ImageName .
@@ -79,6 +98,17 @@ function Start-PodmanContainer {
     
     if (-not (Test-Podman)) {
         exit 1
+    }
+    
+    # Create data and logs directories if they don't exist
+    Write-Status "Creating data and logs directories..."
+    if (-not (Test-Path "./data")) {
+        New-Item -ItemType Directory -Path "./data" -Force
+        Write-Status "Created ./data directory"
+    }
+    if (-not (Test-Path "./logs")) {
+        New-Item -ItemType Directory -Path "./logs" -Force
+        Write-Status "Created ./logs directory"
     }
     
     # Stop existing container if running
@@ -236,6 +266,18 @@ function Clear-PodmanResources {
 # Quick start - build and run
 function Start-PodmanQuick {
     Write-Header "Quick Start - Build and Run"
+    
+    # Create data and logs directories first
+    Write-Status "Setting up directories..."
+    if (-not (Test-Path "./data")) {
+        New-Item -ItemType Directory -Path "./data" -Force
+        Write-Status "Created ./data directory"
+    }
+    if (-not (Test-Path "./logs")) {
+        New-Item -ItemType Directory -Path "./logs" -Force
+        Write-Status "Created ./logs directory"
+    }
+    
     Build-PodmanImage
     Start-PodmanContainer
     Write-Status "🎉 StockAgent is ready!"
@@ -257,6 +299,7 @@ function Show-PodmanHelp {
     Write-Host "  backtest  - Run backtesting in container"
     Write-Host "  status    - Show container and system status"
     Write-Host "  cleanup   - Clean up all Podman resources"
+    Write-Host "  init      - Initialize data and logs directories"
     Write-Host "  quick     - Quick start (build + start)"
     Write-Host "  help      - Show this help"
     Write-Host ""
@@ -296,6 +339,9 @@ switch ($Command.ToLower()) {
     }
     "cleanup" {
         Clear-PodmanResources
+    }
+    "init" {
+        Initialize-Directories
     }
     "quick" {
         Start-PodmanQuick
