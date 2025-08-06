@@ -627,7 +627,7 @@ with tab4:
     st.info("Current API settings (from .env file):")
     st.code(f"""
 Host: {api_host or 'Not set'}
-Port: {api_port or 'Not set'}
+Environment: {api_env or 'Not set'} (dev=port 18081, prod=port 18080)
 Password: {'*' * len(api_password) if api_password else 'Not set'}
     """)
     
