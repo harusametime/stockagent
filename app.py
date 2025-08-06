@@ -400,14 +400,14 @@ with tab2:
     
     # Check if API credentials are configured
     api_host = os.getenv('KABUSAPI_HOST')
-    api_port = os.getenv('KABUSAPI_PORT')
+    api_env = os.getenv('KABUSAPI_ENV', 'dev')
     api_password = os.getenv('KABUSAPI_PASSWORD')
     
-    if not all([api_host, api_port, api_password]):
+    if not all([api_host, api_password]):
         st.warning("⚠️ API credentials not configured. Please set up your .env file with KabusAPI credentials.")
         st.code("""
-KABUSAPI_HOST=your_host
-KABUSAPI_PORT=your_port
+KABUSAPI_HOST=localhost
+KABUSAPI_ENV=dev  # Options: dev (port 18081) or prod (port 18080)
 KABUSAPI_PASSWORD=your_password
         """)
     else:
