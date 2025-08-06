@@ -85,17 +85,32 @@ make help
 Create a `.env` file with your API credentials:
 
 ```
-KABUSAPI_HOST=your_host
-KABUSAPI_PORT=your_port
+KABUSAPI_HOST=host.docker.internal
+KABUSAPI_ENV=dev  # Options: dev (port 18081) or prod (port 18080)
 KABUSAPI_PASSWORD=your_password
+```
+
+### Environment Switching
+
+Use the helper script to easily switch between environments:
+
+```bash
+# Switch to development environment (port 18081)
+python switch_env.py dev
+
+# Switch to production environment (port 18080)
+python switch_env.py prod
+
+# Show current configuration
+python switch_env.py show
 ```
 
 ### Docker Environment Variables
 
 The following environment variables can be set in your `.env` file or passed to Docker:
 
-- `KABUSAPI_HOST`: KabusAPI host (default: localhost)
-- `KABUSAPI_PORT`: KabusAPI port (default: 18080)
+- `KABUSAPI_HOST`: KabusAPI host (default: host.docker.internal)
+- `KABUSAPI_ENV`: Environment (dev/prod, default: dev)
 - `KABUSAPI_PASSWORD`: KabusAPI password
 - `INITIAL_CAPITAL`: Initial trading capital (default: 1000000)
 - `MAX_POSITION_SIZE`: Maximum position size (default: 500000)

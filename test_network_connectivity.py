@@ -20,7 +20,13 @@ def test_network_connectivity():
     
     # Get configuration
     host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
-    port = os.getenv('KABUSAPI_PORT', '18081')
+    
+    # Environment-based port configuration
+    environment = os.getenv('KABUSAPI_ENV', 'dev').lower()
+    if environment == 'prod':
+        port = '18080'
+    else:  # dev or any other value defaults to dev
+        port = '18081'
     
     print(f"📋 Configuration:")
     print(f"   Host: {host}")
@@ -75,7 +81,14 @@ def test_api_endpoints():
     print(f"\n4️⃣ Testing API endpoints...")
     
     host = os.getenv('KABUSAPI_HOST', 'host.docker.internal')
-    port = os.getenv('KABUSAPI_PORT', '18081')
+    
+    # Environment-based port configuration
+    environment = os.getenv('KABUSAPI_ENV', 'dev').lower()
+    if environment == 'prod':
+        port = '18080'
+    else:  # dev or any other value defaults to dev
+        port = '18081'
+    
     base_url = f"http://{host}:{port}/kabusapi"
     
     # Test API base endpoint

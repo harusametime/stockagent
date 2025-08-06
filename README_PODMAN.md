@@ -55,8 +55,17 @@ notepad .env
 
 **Important Network Configuration:**
 - **Host**: Use `host.docker.internal` (not `localhost`) for container access to host services
-- **Port**: Use `18081` for development API, `18080` for production
+- **Environment**: Use `dev` (port 18081) or `prod` (port 18080)
 - **Password**: Your KabusAPI password
+
+**Environment Configuration:**
+```bash
+# Development (default)
+KABUSAPI_ENV=dev    # Port 18081
+
+# Production
+KABUSAPI_ENV=prod   # Port 18080
+```
 
 ## 🛠️ Podman Commands (PowerShell)
 
@@ -140,8 +149,21 @@ python test_network_connectivity.py
 # Check if host.docker.internal resolves
 nslookup host.docker.internal
 
-# Verify KabusAPI is running on host
+# Verify KabusAPI is running on host (check both ports)
 netstat -an | findstr :18081
+netstat -an | findstr :18080
+```
+
+**3. Environment switching**
+```powershell
+# Switch to development environment
+python switch_env.py dev
+
+# Switch to production environment
+python switch_env.py prod
+
+# Show current configuration
+python switch_env.py show
 ```
 
 **2. Port already in use**
