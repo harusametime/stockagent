@@ -1,6 +1,6 @@
 # KabusAPI Configuration
 KABUSAPI_HOST=localhost
-KABUSAPI_PORT=18080
+KABUSAPI_PORT=18081
 KABUSAPI_PASSWORD=your_password_here
 
 # Trading Parameters

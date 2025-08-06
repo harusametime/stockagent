@@ -19,7 +19,7 @@ class KabusAPIClient:
     
     def __init__(self):
         self.host = os.getenv('KABUSAPI_HOST', 'localhost')
-        self.port = os.getenv('KABUSAPI_PORT', '18080')
+        self.port = os.getenv('KABUSAPI_PORT', '18081')  # Changed to dev port
         self.password = os.getenv('KABUSAPI_PASSWORD', '')
         self.base_url = f"http://{self.host}:{self.port}/kabusapi"
         self.token = None
@@ -33,19 +33,63 @@ class KabusAPIClient:
             headers = {'Content-Type': 'application/json'}
             data = {'APIPassword': self.password}
             
-            response = requests.post(url, headers=headers, json=data)
+            print(f"🔐 Attempting authentication to: {url}")
+            print(f"📋 Request data: {data}")
+            
+            response = requests.post(url, headers=headers, json=data, timeout=10)
+            
+            print(f"📡 Response status: {response.status_code}")
+            print(f"📡 Response headers: {dict(response.headers)}")
+            
+            # Print response content for debugging
+            try:
+                response_text = response.text
+                print(f"📡 Response content: {response_text}")
+            except Exception as e:
+                print(f"❌ Error reading response: {str(e)}")
+            
             response.raise_for_status()
             
             result = response.json()
+            print(f"📊 Parsed response: {result}")
+            
             if result.get('ResultCode') == 0:
                 self.token = result.get('Token')
+                print(f"✅ Authentication successful! Token: {self.token[:10]}..." if self.token else "✅ Authentication successful!")
                 return True
             else:
-                print(f"Authentication failed: {result.get('ResultText', 'Unknown error')}")
+                error_msg = result.get('ResultText', 'Unknown error')
+                print(f"❌ Authentication failed: {error_msg}")
+                print(f"❌ Result code: {result.get('ResultCode')}")
                 return False
                 
+        except requests.exceptions.ConnectionError as e:
+            print(f"❌ Connection error: {str(e)}")
+            print(f"🔍 Check if KabusAPI is running on {self.host}:{self.port}")
+            print(f"🔍 Verify network connectivity and firewall settings")
+            return False
+        except requests.exceptions.Timeout as e:
+            print(f"❌ Timeout error: {str(e)}")
+            print(f"🔍 API server may be slow or unresponsive")
+            return False
+        except requests.exceptions.HTTPError as e:
+            print(f"❌ HTTP error: {str(e)}")
+            print(f"📡 Status code: {e.response.status_code if hasattr(e, 'response') else 'Unknown'}")
+            try:
+                error_content = e.response.text if hasattr(e, 'response') else 'No content'
+                print(f"📡 Error content: {error_content}")
+            except:
+                print("📡 Could not read error content")
+            return False
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON decode error: {str(e)}")
+            print(f"📡 Raw response: {response.text if 'response' in locals() else 'No response'}")
+            return False
         except Exception as e:
-            print(f"Authentication error: {str(e)}")
+            print(f"❌ Unexpected error: {str(e)}")
+            print(f"🔍 Error type: {type(e).__name__}")
+            import traceback
+            print(f"🔍 Full traceback: {traceback.format_exc()}")
             return False
     
     def get_token_header(self) -> Dict[str, str]:

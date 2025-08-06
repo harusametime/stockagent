@@ -484,13 +484,37 @@ KABUSAPI_PASSWORD=your_password
             if st.button("🔐 Test Connection", type="secondary"):
                 with st.spinner("Testing API connection..."):
                     try:
-                        agent = LiveTradingAgent(initial_capital_live)
-                        if agent.authenticate():
+                        # Capture stdout to show detailed error messages
+                        import io
+                        import sys
+                        from contextlib import redirect_stdout
+                        
+                        # Create a string buffer to capture output
+                        output_buffer = io.StringIO()
+                        
+                        with redirect_stdout(output_buffer):
+                            agent = LiveTradingAgent(initial_capital_live)
+                            auth_result = agent.authenticate()
+                        
+                        # Get the captured output
+                        detailed_output = output_buffer.getvalue()
+                        
+                        if auth_result:
                             st.success("✅ API connection successful!")
+                            # Show detailed success info
+                            with st.expander("📋 Connection Details"):
+                                st.code(detailed_output)
                         else:
                             st.error("❌ API connection failed!")
+                            # Show detailed error info
+                            with st.expander("🔍 Detailed Error Information"):
+                                st.code(detailed_output)
+                                st.error("Please check your API configuration and network connectivity.")
                     except Exception as e:
                         st.error(f"❌ Connection error: {str(e)}")
+                        import traceback
+                        with st.expander("🔍 Full Error Traceback"):
+                            st.code(traceback.format_exc())
         
         with col2:
             if st.button("🔄 Run Single Cycle", type="secondary"):
