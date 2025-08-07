@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import threading
 import time
+import pytz
 
 # Import our modules
 from backtesting import BacktestingEngine
@@ -15,6 +16,9 @@ from live_trading import LiveTradingAgent
 
 # Load environment variables
 load_dotenv()
+
+# Set Japan Standard Time
+JST = pytz.timezone('Asia/Tokyo')
 
 # Initialize session state for auto-trading
 if 'auto_trading_active' not in st.session_state:
@@ -28,47 +32,47 @@ if 'trading_logs' not in st.session_state:
 
 # Page configuration
 st.set_page_config(
-    page_title="Stock Trading Agent",
+    page_title="株式取引エージェント",
     page_icon="📈",
     layout="wide"
 )
 
 # Sidebar
-st.sidebar.title("📈 Stock Trading Agent")
-st.sidebar.markdown("Nikkei 225 ETF Trading System")
+st.sidebar.title("📈 株式取引エージェント")
+st.sidebar.markdown("日経225 ETF取引システム")
 
 # Main content
-st.title("📈 Stock Trading Agent")
-st.markdown("A comprehensive trading system for Nikkei 225 ETFs (1579.T and 1360.T)")
+st.title("📈 株式取引エージェント")
+st.markdown("日経225 ETF（1579.T と 1360.T）の包括的な取引システム")
 
 # Tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Backtesting", "🤖 Live Trading", "📈 Market Data", "⚙️ Settings"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 バックテスト", "🤖 ライブ取引", "📈 市場データ", "⚙️ 設定"])
 
 with tab1:
-    st.header("📊 Backtesting")
+    st.header("📊 バックテスト")
     
     # Backtesting parameters
     col1, col2 = st.columns(2)
     
     with col1:
-        initial_capital = st.number_input("Initial Capital (¥)", value=1000000, step=100000)
-        strategy_name = st.selectbox("Trading Strategy", list(STRATEGIES.keys()))
+        initial_capital = st.number_input("初期資本 (¥)", value=1000000, step=100000)
+        strategy_name = st.selectbox("取引戦略", list(STRATEGIES.keys()))
         
     with col2:
-        start_date = st.date_input("Start Date", value=datetime.now() - timedelta(days=365))
-        end_date = st.date_input("End Date", value=datetime.now())
+        start_date = st.date_input("開始日", value=datetime.now(JST) - timedelta(days=365))
+        end_date = st.date_input("終了日", value=datetime.now(JST))
     
     # Strategy parameters
-    st.subheader("Strategy Parameters")
+    st.subheader("戦略パラメータ")
     
     if strategy_name == "mean_reversion":
         col1, col2, col3 = st.columns(3)
         with col1:
-            rsi_oversold = st.slider("RSI Oversold", 20, 40, 30)
+            rsi_oversold = st.slider("RSI 売られすぎ", 20, 40, 30)
         with col2:
-            rsi_overbought = st.slider("RSI Overbought", 60, 80, 70)
+            rsi_overbought = st.slider("RSI 買われすぎ", 60, 80, 70)
         with col3:
-            bb_std_multiplier = st.slider("Bollinger Bands Std Multiplier", 1.5, 3.0, 2.0)
+            bb_std_multiplier = st.slider("ボリンジャーバンド標準偏差倍率", 1.5, 3.0, 2.0)
         strategy_params = {
             'rsi_oversold': rsi_oversold,
             'rsi_overbought': rsi_overbought,
@@ -78,9 +82,9 @@ with tab1:
     elif strategy_name == "momentum":
         col1, col2 = st.columns(2)
         with col1:
-            macd_threshold = st.slider("MACD Threshold", -0.1, 0.1, 0.0, 0.01, key="backtest_macd_threshold")
+            macd_threshold = st.slider("MACD閾値", -0.1, 0.1, 0.0, 0.01, key="backtest_macd_threshold")
         with col2:
-            volume_threshold = st.slider("Volume Threshold", 1.0, 3.0, 1.5, 0.1, key="backtest_volume_threshold")
+            volume_threshold = st.slider("出来高閾値", 1.0, 3.0, 1.5, 0.1, key="backtest_volume_threshold")
         strategy_params = {
             'macd_threshold': macd_threshold,
             'volume_threshold': volume_threshold
@@ -89,9 +93,9 @@ with tab1:
     elif strategy_name == "pairs_trading":
         col1, col2 = st.columns(2)
         with col1:
-            correlation_threshold = st.slider("Correlation Threshold", 0.5, 0.9, 0.7, 0.05, key="backtest_correlation_threshold")
+            correlation_threshold = st.slider("相関閾値", 0.5, 0.9, 0.7, 0.05, key="backtest_correlation_threshold")
         with col2:
-            z_score_threshold = st.slider("Z-Score Threshold", 1.0, 3.0, 2.0, 0.1, key="backtest_z_score_threshold")
+            z_score_threshold = st.slider("Zスコア閾値", 1.0, 3.0, 2.0, 0.1, key="backtest_z_score_threshold")
         strategy_params = {
             'correlation_threshold': correlation_threshold,
             'z_score_threshold': z_score_threshold
@@ -604,7 +608,7 @@ with tab3:
     if 'market_data_history' not in st.session_state:
         st.session_state.market_data_history = {'1579.T': [], '1360.T': []}
     if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = datetime.now()
+        st.session_state.last_refresh = datetime.now(JST)
     
     # Get real-time market data
     try:
@@ -613,7 +617,7 @@ with tab3:
             realtime_data = agent.get_realtime_market_data(['1579.T', '1360.T'])
             
             # Update market data history
-            current_time = datetime.now()
+            current_time = datetime.now(JST)
             for symbol, data in realtime_data.items():
                 if symbol in st.session_state.market_data_history:
                     st.session_state.market_data_history[symbol].append({

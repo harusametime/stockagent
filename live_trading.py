@@ -7,10 +7,14 @@ import os
 from dotenv import load_dotenv
 import yfinance as yf
 import pandas as pd
+import pytz
 from trading_algorithms import STRATEGIES
 
 # Load environment variables
 load_dotenv()
+
+# 日本標準時の設定
+JST = pytz.timezone('Asia/Tokyo')
 
 class KabusAPIClient:
     """
@@ -47,20 +51,20 @@ class KabusAPIClient:
             headers = {'Content-Type': 'application/json'}
             data = {'APIPassword': self.password}
             
-            print(f"🔐 Attempting authentication to: {url}")
-            print(f"📋 Request data: {data}")
+            print(f"🔐 認証を試行中: {url}")
+            print(f"📋 リクエストデータ: {data}")
             
             response = requests.post(url, headers=headers, json=data, timeout=10)
             
-            print(f"📡 Response status: {response.status_code}")
-            print(f"📡 Response headers: {dict(response.headers)}")
+            print(f"📡 レスポンスステータス: {response.status_code}")
+            print(f"📡 レスポンスヘッダー: {dict(response.headers)}")
             
             # Print response content for debugging
             try:
                 response_text = response.text
-                print(f"📡 Response content: {response_text}")
+                print(f"📡 レスポンス内容: {response_text}")
             except Exception as e:
-                print(f"❌ Error reading response: {str(e)}")
+                print(f"❌ レスポンス読み取りエラー: {str(e)}")
             
             response.raise_for_status()
             
@@ -369,7 +373,7 @@ class LiveTradingAgent:
                 if symbol in current_prices:
                     realtime_data[symbol] = {
                         'price': current_prices[symbol],
-                        'timestamp': datetime.now(),
+                        'timestamp': datetime.now(JST),
                         'symbol': symbol
                     }
                 else:
@@ -380,7 +384,7 @@ class LiveTradingAgent:
                         if not latest_data.empty:
                             realtime_data[symbol] = {
                                 'price': latest_data['Close'].iloc[-1],
-                                'timestamp': datetime.now(),
+                                'timestamp': datetime.now(JST),
                                 'symbol': symbol,
                                 'source': 'yfinance_fallback'
                             }
@@ -398,7 +402,7 @@ class LiveTradingAgent:
                     if not latest_data.empty:
                         realtime_data[symbol] = {
                             'price': latest_data['Close'].iloc[-1],
-                            'timestamp': datetime.now(),
+                            'timestamp': datetime.now(JST),
                             'symbol': symbol,
                             'source': 'yfinance_fallback'
                         }
