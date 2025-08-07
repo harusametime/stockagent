@@ -110,6 +110,57 @@ function Test-FileEncoding {
     }
 }
 
+function Get-HostIP {
+    <#
+    .SYNOPSIS
+    Auto-detect Windows host IP for Podman containers
+    #>
+    Write-Status "Detecting Windows host IP address..."
+    
+    try {
+        # Get primary network adapter IP (skip loopback and link-local)
+        $primaryIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Ethernet*" | 
+                     Where-Object {$_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*"} | 
+                     Select-Object -First 1).IPAddress
+        
+        if ($primaryIP) {
+            Write-Success "Detected host IP: $primaryIP"
+            return $primaryIP
+        } else {
+            Write-Error "Could not auto-detect IP"
+            return $null
+        }
+    } catch {
+        Write-Error "Error detecting IP: $($_.Exception.Message)"
+        return $null
+    }
+}
+
+function Show-HostIPInfo {
+    Write-Status "Host IP Information"
+    
+    $hostIP = Get-HostIP
+    if ($hostIP) {
+        Write-Success "✅ Host IP: $hostIP"
+        Write-Info "📋 Use this command for testing:"
+        Write-Host "podman run --rm -it --add-host host.containers.internal:$hostIP curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'APIKensyou'}`" http://host.containers.internal:8080/kabusapi/token" -ForegroundColor Cyan
+        Write-Host ""
+    } else {
+        Write-Error "❌ Could not detect host IP"
+        Write-Info "💡 Manual options:"
+        Write-Host "1. Use 'localhost' with --network host" -ForegroundColor White
+        Write-Host "2. Use 'host.docker.internal' with Docker instead of Podman" -ForegroundColor White
+        Write-Host "3. Manually specify your Windows IP address" -ForegroundColor White
+        Write-Host ""
+    }
+    
+    # Show all IPv4 addresses
+    Write-Info "All available IPv4 addresses:"
+    Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*"} | ForEach-Object {
+        Write-Host "  📡 $($_.IPAddress) ($($_.InterfaceAlias))" -ForegroundColor White
+    }
+}
+
 function Setup-NginxProxy {
     Write-Status "Setting up Nginx reverse proxy..."
     
@@ -329,6 +380,9 @@ function Main {
         Write-Error "Failed to setup environment"
         exit 1
     }
+    
+    # Show host IP information
+    Show-HostIPInfo
     
     # Show next steps
     Show-NextSteps

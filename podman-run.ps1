@@ -122,10 +122,11 @@ function Start-PodmanContainer {
     Write-Status "Starting stockagent container..."
     podman run -d `
         --name $ContainerName `
-        --network host `
+        -p $Port`:8501 `
         -v ./data:/app/data `
         -v ./logs:/app/logs `
         --env-file .env `
+        --add-host host.containers.internal:host-gateway `
         $ImageName
     
     if ($LASTEXITCODE -eq 0) {
@@ -282,6 +283,30 @@ function Start-PodmanQuick {
     Start-PodmanContainer
     Write-Status "🎉 StockAgent is ready!"
     Write-Status "🌐 Open: http://localhost:$Port"
+}
+
+function Get-HostIP {
+    <#
+    .SYNOPSIS
+    Auto-detect Windows host IP for Podman containers
+    #>
+    try {
+        # Get primary network adapter IP (skip loopback and link-local)
+        $primaryIP = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias "Ethernet*" | 
+                     Where-Object {$_.IPAddress -notlike "169.254.*" -and $_.IPAddress -notlike "127.*"} | 
+                     Select-Object -First 1).IPAddress
+        
+        if ($primaryIP) {
+            Write-Host "✅ Detected host IP: $primaryIP" -ForegroundColor Green
+            return $primaryIP
+        } else {
+            Write-Host "⚠️ Could not auto-detect IP, using default" -ForegroundColor Yellow
+            return "192.168.1.20"  # Fallback
+        }
+    } catch {
+        Write-Host "⚠️ Error detecting IP, using default" -ForegroundColor Yellow
+        return "192.168.1.20"  # Fallback
+    }
 }
 
 # Show help
