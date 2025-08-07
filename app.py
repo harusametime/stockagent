@@ -592,31 +592,144 @@ KABUSAPI_PASSWORD=your_password
 with tab3:
     st.header("📈 Market Data")
     
-    # Real-time market data
+    # Auto-refresh settings
     col1, col2 = st.columns(2)
-    
     with col1:
-        st.subheader("1579.T - Nikkei 225 ETF")
-        # Placeholder for 1579.T chart
-        st.line_chart(pd.DataFrame({'Price': [100, 101, 99, 102, 100, 103, 101, 104]}))
-    
+        refresh_interval = st.slider("Auto-refresh interval (seconds)", 5, 60, 10, key="refresh_interval")
     with col2:
-        st.subheader("1360.T - Inverse Nikkei 225 ETF")
-        # Placeholder for 1360.T chart
-        st.line_chart(pd.DataFrame({'Price': [200, 199, 201, 198, 200, 197, 199, 196]}))
+        if st.button("🔄 Refresh Now", key="refresh_now"):
+            st.rerun()
     
-    # Market statistics
-    st.subheader("Market Statistics")
+    # Initialize session state for market data
+    if 'market_data_history' not in st.session_state:
+        st.session_state.market_data_history = {'1579.T': [], '1360.T': []}
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = datetime.now()
     
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("1579.T Price", "¥1,234")
-    with col2:
-        st.metric("1360.T Price", "¥2,345")
-    with col3:
-        st.metric("1579.T Change", "+1.2%", delta="+1.2%")
-    with col4:
-        st.metric("1360.T Change", "-1.1%", delta="-1.1%")
+    # Get real-time market data
+    try:
+        agent = LiveTradingAgent()
+        if agent.authenticate():
+            realtime_data = agent.get_realtime_market_data(['1579.T', '1360.T'])
+            
+            # Update market data history
+            current_time = datetime.now()
+            for symbol, data in realtime_data.items():
+                if symbol in st.session_state.market_data_history:
+                    st.session_state.market_data_history[symbol].append({
+                        'timestamp': current_time,
+                        'price': data['price'],
+                        'source': data.get('source', 'KabusAPI')
+                    })
+                    # Keep only last 100 data points
+                    if len(st.session_state.market_data_history[symbol]) > 100:
+                        st.session_state.market_data_history[symbol] = st.session_state.market_data_history[symbol][-100:]
+            
+            st.session_state.last_refresh = current_time
+            
+            # Display real-time data
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("1579.T - Nikkei 225 ETF")
+                if '1579.T' in realtime_data:
+                    price_1579 = realtime_data['1579.T']['price']
+                    st.metric("Current Price", f"¥{price_1579:,.2f}")
+                    
+                    # Create chart from history
+                    if st.session_state.market_data_history['1579.T']:
+                        df_1579 = pd.DataFrame(st.session_state.market_data_history['1579.T'])
+                        fig_1579 = px.line(df_1579, x='timestamp', y='price', 
+                                          title='1579.T Price History',
+                                          labels={'price': 'Price (¥)', 'timestamp': 'Time'})
+                        st.plotly_chart(fig_1579, use_container_width=True)
+                else:
+                    st.error("No data available for 1579.T")
+            
+            with col2:
+                st.subheader("1360.T - Inverse Nikkei 225 ETF")
+                if '1360.T' in realtime_data:
+                    price_1360 = realtime_data['1360.T']['price']
+                    st.metric("Current Price", f"¥{price_1360:,.2f}")
+                    
+                    # Create chart from history
+                    if st.session_state.market_data_history['1360.T']:
+                        df_1360 = pd.DataFrame(st.session_state.market_data_history['1360.T'])
+                        fig_1360 = px.line(df_1360, x='timestamp', y='price', 
+                                          title='1360.T Price History',
+                                          labels={'price': 'Price (¥)', 'timestamp': 'Time'})
+                        st.plotly_chart(fig_1360, use_container_width=True)
+                else:
+                    st.error("No data available for 1360.T")
+            
+            # Market statistics
+            st.subheader("📊 Market Statistics")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                if '1579.T' in realtime_data:
+                    st.metric("1579.T Price", f"¥{realtime_data['1579.T']['price']:,.2f}")
+                else:
+                    st.metric("1579.T Price", "N/A")
+            with col2:
+                if '1360.T' in realtime_data:
+                    st.metric("1360.T Price", f"¥{realtime_data['1360.T']['price']:,.2f}")
+                else:
+                    st.metric("1360.T Price", "N/A")
+            with col3:
+                st.metric("Last Refresh", st.session_state.last_refresh.strftime("%H:%M:%S"))
+            with col4:
+                st.metric("Data Source", "KabusAPI" if all('source' not in data for data in realtime_data.values()) else "Mixed")
+            
+            # Data source information
+            st.info(f"🔄 Auto-refresh every {refresh_interval} seconds. Last updated: {st.session_state.last_refresh.strftime('%Y-%m-%d %H:%M:%S')}")
+            
+        else:
+            st.error("❌ Failed to authenticate with KabusAPI. Using fallback data.")
+            # Fallback to yfinance
+            import yfinance as yf
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("1579.T - Nikkei 225 ETF (Fallback)")
+                try:
+                    ticker_1579 = yf.Ticker("1579.T")
+                    latest_1579 = ticker_1579.history(period='1d')
+                    if not latest_1579.empty:
+                        price_1579 = latest_1579['Close'].iloc[-1]
+                        st.metric("Current Price", f"¥{price_1579:,.2f}")
+                        st.info("Source: Yahoo Finance (Fallback)")
+                    else:
+                        st.error("No data available")
+                except Exception as e:
+                    st.error(f"Error getting data: {str(e)}")
+            
+            with col2:
+                st.subheader("1360.T - Inverse Nikkei 225 ETF (Fallback)")
+                try:
+                    ticker_1360 = yf.Ticker("1360.T")
+                    latest_1360 = ticker_1360.history(period='1d')
+                    if not latest_1360.empty:
+                        price_1360 = latest_1360['Close'].iloc[-1]
+                        st.metric("Current Price", f"¥{price_1360:,.2f}")
+                        st.info("Source: Yahoo Finance (Fallback)")
+                    else:
+                        st.error("No data available")
+                except Exception as e:
+                    st.error(f"Error getting data: {str(e)}")
+    
+    except Exception as e:
+        st.error(f"❌ Error getting market data: {str(e)}")
+        st.info("Please check your API connection and try again.")
+    
+    # Auto-refresh using JavaScript
+    st.markdown(f"""
+    <script>
+        setTimeout(function() {{
+            window.location.reload();
+        }}, {refresh_interval * 1000});
+    </script>
+    """, unsafe_allow_html=True)
 
 with tab4:
     st.header("⚙️ Settings")

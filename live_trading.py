@@ -355,6 +355,59 @@ class LiveTradingAgent:
         
         return data
     
+    def get_realtime_market_data(self, symbols: List[str]) -> Dict[str, Dict]:
+        """
+        Get real-time market data from KabusAPI
+        """
+        realtime_data = {}
+        
+        try:
+            # Get current prices from KabusAPI
+            current_prices = self.api_client.get_market_price(symbols)
+            
+            for symbol in symbols:
+                if symbol in current_prices:
+                    realtime_data[symbol] = {
+                        'price': current_prices[symbol],
+                        'timestamp': datetime.now(),
+                        'symbol': symbol
+                    }
+                else:
+                    # Fallback to yfinance if KabusAPI fails
+                    try:
+                        ticker = yf.Ticker(symbol)
+                        latest_data = ticker.history(period='1d')
+                        if not latest_data.empty:
+                            realtime_data[symbol] = {
+                                'price': latest_data['Close'].iloc[-1],
+                                'timestamp': datetime.now(),
+                                'symbol': symbol,
+                                'source': 'yfinance_fallback'
+                            }
+                    except Exception as e:
+                        print(f"Error getting fallback data for {symbol}: {str(e)}")
+                        continue
+                        
+        except Exception as e:
+            print(f"Error getting real-time market data: {str(e)}")
+            # Fallback to yfinance for all symbols
+            for symbol in symbols:
+                try:
+                    ticker = yf.Ticker(symbol)
+                    latest_data = ticker.history(period='1d')
+                    if not latest_data.empty:
+                        realtime_data[symbol] = {
+                            'price': latest_data['Close'].iloc[-1],
+                            'timestamp': datetime.now(),
+                            'symbol': symbol,
+                            'source': 'yfinance_fallback'
+                        }
+                except Exception as e:
+                    print(f"Error getting fallback data for {symbol}: {str(e)}")
+                    continue
+        
+        return realtime_data
+    
     def calculate_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Calculate technical indicators (same as in backtesting)
@@ -515,6 +568,13 @@ class LiveTradingAgent:
         except KeyboardInterrupt:
             print("\nStopping live trading...")
             self.is_running = False
+    
+    def stop_trading(self):
+        """
+        Stop continuous trading
+        """
+        print("Stopping live trading...")
+        self.is_running = False
     
     def get_trading_summary(self) -> Dict:
         """
