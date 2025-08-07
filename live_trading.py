@@ -21,12 +21,18 @@ class KabusAPIClient:
         # Try Podman's host.containers.internal first, then Docker's host.docker.internal
         self.host = os.getenv('KABUSAPI_HOST', 'host.containers.internal')
         
-        # Environment-based port configuration
-        environment = os.getenv('KABUSAPI_ENV', 'dev').lower()
-        if environment == 'prod':
-            self.port = '18080'
-        else:  # dev or any other value defaults to dev
-            self.port = '18081'
+        # Check if using reverse proxy (direct port specification)
+        proxy_port = os.getenv('KABUSAPI_PORT')
+        if proxy_port:
+            # Use reverse proxy port directly
+            self.port = proxy_port
+        else:
+            # Environment-based port configuration
+            environment = os.getenv('KABUSAPI_ENV', 'dev').lower()
+            if environment == 'prod':
+                self.port = '18080'
+            else:  # dev or any other value defaults to dev
+                self.port = '18081'
         
         self.password = os.getenv('KABUSAPI_PASSWORD', '')
         self.base_url = f"http://{self.host}:{self.port}/kabusapi"
