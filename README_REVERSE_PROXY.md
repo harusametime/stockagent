@@ -41,8 +41,8 @@ Create a new `.env` file with reverse proxy settings:
 cp env-proxy-example.txt .env
 
 # Edit with your settings
-KABUSAPI_HOST=192.168.1.20  # Your Windows IP
-KABUSAPI_PORT=8080           # Reverse proxy port
+KABUSAPI_HOST=host.containers.internal  # Container access to host
+KABUSAPI_PORT=8080                      # Reverse proxy port
 KABUSAPI_PASSWORD=your_password
 ```
 
@@ -59,10 +59,10 @@ python test_api_connection.py
 ## 🌐 **How It Works**
 
 ```
-Container → 192.168.1.20:8080 → Nginx Proxy → localhost:18081 → KabusAPI
+Container → host.containers.internal:8080 → Nginx Proxy → localhost:18081 → KabusAPI
 ```
 
-1. **Container** connects to Windows IP on proxy port
+1. **Container** connects to host via `host.containers.internal` on proxy port
 2. **Nginx** forwards request to localhost:18081
 3. **KabusAPI** accepts the localhost connection
 

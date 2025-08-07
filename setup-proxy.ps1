@@ -45,7 +45,7 @@ try {
     Write-Host "✅ Nginx reverse proxy started on port 8080" -ForegroundColor Green
     Write-Host "🌐 Proxy URL: http://localhost:8080/kabusapi/" -ForegroundColor Cyan
     Write-Host "📋 Update your .env file:" -ForegroundColor Yellow
-    Write-Host "   KABUSAPI_HOST=192.168.1.20" -ForegroundColor White
+    Write-Host "   KABUSAPI_HOST=host.containers.internal" -ForegroundColor White
     Write-Host "   KABUSAPI_PORT=8080" -ForegroundColor White
 } catch {
     Write-Host "❌ Failed to start nginx" -ForegroundColor Red
