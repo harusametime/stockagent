@@ -92,6 +92,24 @@ function Install-Nginx {
     return $true
 }
 
+function Test-FileEncoding {
+    param([string]$FilePath)
+    
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($FilePath)
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+            Write-Info "File has UTF-8 BOM - this may cause issues with nginx"
+            return $false
+        } else {
+            Write-Success "File is UTF-8 without BOM - good for nginx"
+            return $true
+        }
+    } catch {
+        Write-Error "Could not check file encoding: $($_.Exception.Message)"
+        return $false
+    }
+}
+
 function Setup-NginxProxy {
     Write-Status "Setting up Nginx reverse proxy..."
     
@@ -109,42 +127,21 @@ function Setup-NginxProxy {
         Write-Success "Created nginx logs directory"
     }
     
-    # Create nginx proxy configuration with absolute paths
-    $nginxConfig = @"
-events {
-    worker_connections 1024;
-}
-
-http {
-    # Logging configuration
-    log_format main '`$remote_addr - `$remote_user [`$time_local] "`$request" '
-                    '`$status `$body_bytes_sent "`$http_referer" '
-                    '"`$http_user_agent" "`$http_x_forwarded_for"';
-
-    access_log $nginxLogsDir\access.log main;
-    error_log $nginxLogsDir\error.log;
-
-    upstream kabusapi {
-        server 127.0.0.1:18081;
-    }
-
-    server {
-        listen 0.0.0.0:$ProxyPort;
+    # Copy the simple nginx configuration
+    $simpleConfig = "nginx-simple.conf"
+    if (Test-Path $simpleConfig) {
+        # Read the content and write with UTF-8 without BOM
+        $content = Get-Content $simpleConfig -Raw
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText("$nginxConfDir\nginx.conf", $content, $utf8NoBom)
+        Write-Success "Copied nginx configuration from $simpleConfig (UTF-8 without BOM)"
         
-        location /kabusapi/ {
-            proxy_pass http://kabusapi/;
-            proxy_set_header Host `$host;
-            proxy_set_header X-Real-IP `$remote_addr;
-            proxy_set_header X-Forwarded-For `$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto `$scheme;
-        }
+        # Verify the encoding
+        Test-FileEncoding "$nginxConfDir\nginx.conf"
+    } else {
+        Write-Error "nginx-simple.conf not found!"
+        return $false
     }
-}
-"@
-    
-    # Write configuration file to the correct location
-    $nginxConfig | Out-File -FilePath "$nginxConfDir\nginx.conf" -Encoding UTF8
-    Write-Success "Created nginx proxy configuration at $nginxConfDir\nginx.conf"
     
     # Test nginx configuration with explicit config file path
     try {
