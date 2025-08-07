@@ -55,7 +55,7 @@ notepad .env
 ```
 
 **Important Network Configuration:**
-- **Host**: Use `host.containers.internal` (not `localhost`) for container access to host services
+- **Host**: Use `localhost` (container uses host network mode)
 - **Environment**: Use `dev` (port 18081) or `prod` (port 18080)
 - **Password**: Your KabusAPI password
 
@@ -67,6 +67,8 @@ KABUSAPI_ENV=dev    # Port 18081
 # Production
 KABUSAPI_ENV=prod   # Port 18080
 ```
+
+**Note:** The container uses host network mode (`--network host`) to access localhost directly.
 
 ## 🛠️ Podman Commands (PowerShell)
 
@@ -147,8 +149,8 @@ podman --version
 # Test network connectivity from container
 python test_network_connectivity.py
 
-# Check if host.containers.internal resolves
-nslookup host.containers.internal
+# Check if localhost is accessible
+curl http://localhost:18081/kabusapi/token
 
 # Verify KabusAPI is running on host (check both ports)
 netstat -an | findstr :18081

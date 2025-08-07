@@ -90,11 +90,10 @@ start_podman() {
     print_status "Starting stockagent container..."
     podman run -d \
         --name $CONTAINER_NAME \
-        -p $PORT:8501 \
+        --network host \
         -v ./data:/app/data \
         -v ./logs:/app/logs \
         --env-file .env \
-        --add-host host.containers.internal:host-gateway \
         $IMAGE_NAME
     
     if [ $? -eq 0 ]; then

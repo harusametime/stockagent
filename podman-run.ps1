@@ -122,11 +122,10 @@ function Start-PodmanContainer {
     Write-Status "Starting stockagent container..."
     podman run -d `
         --name $ContainerName `
-        -p $Port`:8501 `
+        --network host `
         -v ./data:/app/data `
         -v ./logs:/app/logs `
         --env-file .env `
-        --add-host host.containers.internal:host-gateway `
         $ImageName
     
     if ($LASTEXITCODE -eq 0) {
