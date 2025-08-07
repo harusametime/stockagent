@@ -102,6 +102,13 @@ function Setup-NginxProxy {
         Write-Success "Created nginx config directory"
     }
     
+    # Create logs directory
+    $nginxLogsDir = "$InstallPath\logs"
+    if (!(Test-Path $nginxLogsDir)) {
+        New-Item -ItemType Directory -Path $nginxLogsDir -Force | Out-Null
+        Write-Success "Created nginx logs directory"
+    }
+    
     # Create nginx proxy configuration
     $nginxConfig = @"
 events {
@@ -109,6 +116,14 @@ events {
 }
 
 http {
+    # Logging configuration
+    log_format main '`$remote_addr - `$remote_user [`$time_local] "`$request" '
+                    '`$status `$body_bytes_sent "`$http_referer" '
+                    '"`$http_user_agent" "`$http_x_forwarded_for"';
+
+    access_log $nginxLogsDir\access.log main;
+    error_log $nginxLogsDir\error.log;
+
     upstream kabusapi {
         server 127.0.0.1:18081;
     }
@@ -159,8 +174,18 @@ function Start-NginxProxy {
         # Ignore errors if nginx wasn't running
     }
     
+    # Check if port is already in use
+    $portInUse = Get-NetTCPConnection -LocalPort $ProxyPort -ErrorAction SilentlyContinue
+    if ($portInUse) {
+        Write-Error "Port $ProxyPort is already in use. Please stop the service using this port first."
+        return $false
+    }
+    
     # Start nginx
     try {
+        # Change to nginx directory for proper log file paths
+        Push-Location $InstallPath
+        
         & "$InstallPath\nginx.exe"
         Start-Sleep -Seconds 3
         
@@ -168,13 +193,34 @@ function Start-NginxProxy {
         $process = Get-Process -Name "nginx" -ErrorAction SilentlyContinue
         if ($process) {
             Write-Success "Nginx reverse proxy started on port $ProxyPort"
+            
+            # Check if nginx is listening on the port
+            $listening = Get-NetTCPConnection -LocalPort $ProxyPort -ErrorAction SilentlyContinue
+            if ($listening) {
+                Write-Success "Nginx is listening on port $ProxyPort"
+            } else {
+                Write-Error "Nginx started but not listening on port $ProxyPort"
+                return $false
+            }
+            
+            Pop-Location
             return $true
         } else {
             Write-Error "Failed to start Nginx"
+            
+            # Check error log for details
+            $errorLog = "$InstallPath\logs\error.log"
+            if (Test-Path $errorLog) {
+                Write-Info "Nginx error log:"
+                Get-Content $errorLog -Tail 5 | ForEach-Object { Write-Host "   $_" -ForegroundColor Yellow }
+            }
+            
+            Pop-Location
             return $false
         }
     } catch {
         Write-Error "Failed to start Nginx: $($_.Exception.Message)"
+        Pop-Location
         return $false
     }
 }
