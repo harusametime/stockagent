@@ -88,13 +88,22 @@ start_podman() {
     fi
     
     print_status "Starting stockagent container..."
+    
+    # Get host IP for reverse proxy connection (Windows IP)
+    # Note: This script assumes you're running on Windows with WSL2
+    # For Linux/macOS, you might need to adjust the IP detection
+    HOST_IP=${HOST_IP:-"192.168.1.20"}  # Default Windows IP, can be overridden
+    
+    print_status "Using host IP: $HOST_IP for reverse proxy connection"
+    print_status "To override, set HOST_IP environment variable"
+    
     podman run -d \
         --name $CONTAINER_NAME \
         -p $PORT:8501 \
         -v ./data:/app/data \
         -v ./logs:/app/logs \
         --env-file .env \
-        --add-host host.containers.internal:host-gateway \
+        --add-host "host.containers.internal:$HOST_IP" \
         $IMAGE_NAME
     
     if [ $? -eq 0 ]; then

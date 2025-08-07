@@ -120,13 +120,22 @@ function Start-PodmanContainer {
     }
     
     Write-Status "Starting stockagent container..."
+    
+    # Get host IP for reverse proxy connection
+    $hostIP = Get-HostIP
+    if (-not $hostIP) {
+        Write-Error "Could not detect host IP. Please run setup-windows.ps1 first or manually specify your Windows IP."
+        exit 1
+    }
+    
+    Write-Status "Using host IP: $hostIP for reverse proxy connection"
     podman run -d `
         --name $ContainerName `
         -p $Port`:8501 `
         -v ./data:/app/data `
         -v ./logs:/app/logs `
         --env-file .env `
-        --add-host host.containers.internal:host-gateway `
+        --add-host "host.containers.internal:$hostIP" `
         $ImageName
     
     if ($LASTEXITCODE -eq 0) {
@@ -195,6 +204,42 @@ function Test-PodmanContainer {
     else {
         Write-Warning "Container is not running"
         Write-Status "To start: .\podman-run.ps1 start"
+    }
+}
+
+# Test reverse proxy connection
+function Test-ReverseProxy {
+    Write-Header "Testing Reverse Proxy Connection"
+    
+    if (-not (Test-Podman)) {
+        exit 1
+    }
+    
+    $hostIP = Get-HostIP
+    if (-not $hostIP) {
+        Write-Error "Could not detect host IP. Please run setup-windows.ps1 first."
+        exit 1
+    }
+    
+    Write-Status "Testing connection to reverse proxy..."
+    Write-Status "Using host IP: $hostIP"
+    
+    # Test with curl from container
+    $testCmd = "podman run --rm -it --add-host `"host.containers.internal:$hostIP`" curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'APIKensyou'}`" http://host.containers.internal:8080/kabusapi/token"
+    
+    Write-Status "Running test command:"
+    Write-Host $testCmd -ForegroundColor Cyan
+    
+    Invoke-Expression $testCmd
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "✅ Reverse proxy connection test successful!"
+    } else {
+        Write-Error "❌ Reverse proxy connection test failed"
+        Write-Info "Make sure:"
+        Write-Host "1. Nginx reverse proxy is running on port 8080" -ForegroundColor White
+        Write-Host "2. KabusAPI is running on localhost:18081" -ForegroundColor White
+        Write-Host "3. Windows Firewall allows port 8080" -ForegroundColor White
     }
 }
 
@@ -321,6 +366,7 @@ function Show-PodmanHelp {
     Write-Host "  stop      - Stop container"
     Write-Host "  logs      - Show container logs"
     Write-Host "  test      - Run tests in container"
+    Write-Host "  proxy     - Test reverse proxy connection"
     Write-Host "  backtest  - Run backtesting in container"
     Write-Host "  status    - Show container and system status"
     Write-Host "  cleanup   - Clean up all Podman resources"
@@ -355,6 +401,9 @@ switch ($Command.ToLower()) {
     }
     "test" {
         Test-PodmanContainer
+    }
+    "proxy" {
+        Test-ReverseProxy
     }
     "backtest" {
         Invoke-PodmanBacktest
