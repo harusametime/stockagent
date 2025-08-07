@@ -109,7 +109,7 @@ function Setup-NginxProxy {
         Write-Success "Created nginx logs directory"
     }
     
-    # Create nginx proxy configuration
+    # Create nginx proxy configuration with absolute paths
     $nginxConfig = @"
 events {
     worker_connections 1024;
@@ -142,13 +142,13 @@ http {
 }
 "@
     
-    # Write configuration file
+    # Write configuration file to the correct location
     $nginxConfig | Out-File -FilePath "$nginxConfDir\nginx.conf" -Encoding UTF8
-    Write-Success "Created nginx proxy configuration"
+    Write-Success "Created nginx proxy configuration at $nginxConfDir\nginx.conf"
     
-    # Test nginx configuration
+    # Test nginx configuration with explicit config file path
     try {
-        & "$InstallPath\nginx.exe" -t
+        & "$InstallPath\nginx.exe" -t -c "$nginxConfDir\nginx.conf"
         if ($LASTEXITCODE -eq 0) {
             Write-Success "Nginx configuration is valid"
         } else {
@@ -181,12 +181,13 @@ function Start-NginxProxy {
         return $false
     }
     
-    # Start nginx
+    # Start nginx with explicit config file
     try {
         # Change to nginx directory for proper log file paths
         Push-Location $InstallPath
         
-        & "$InstallPath\nginx.exe"
+        # Start nginx with explicit config file path
+        & "$InstallPath\nginx.exe" -c "$InstallPath\conf\nginx.conf"
         Start-Sleep -Seconds 3
         
         # Check if nginx is running
