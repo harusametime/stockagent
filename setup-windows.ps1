@@ -143,7 +143,7 @@ function Show-HostIPInfo {
     if ($hostIP) {
         Write-Success "✅ Host IP: $hostIP"
         Write-Info "📋 Use this command for testing:"
-        Write-Host "podman run --rm -it --add-host host.containers.internal:$hostIP curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'APIKensyou'}`" http://host.containers.internal:8080/kabusapi/token" -ForegroundColor Cyan
+        Write-Host "podman run --rm -it --add-host host.containers.internal:$hostIP curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'YOUR_API_PASSWORD'}`" http://host.containers.internal:8080/kabusapi/token" -ForegroundColor Cyan
         Write-Host ""
     } else {
         Write-Error "❌ Could not detect host IP"

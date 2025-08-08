@@ -225,7 +225,7 @@ function Test-ReverseProxy {
     Write-Status "Using host IP: $hostIP"
     
     # Test with curl from container
-    $testCmd = "podman run --rm -it --add-host `"host.containers.internal:$hostIP`" curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'APIKensyou'}`" http://host.containers.internal:8080/kabusapi/token"
+    $testCmd = "podman run --rm -it --add-host `"host.containers.internal:$hostIP`" curlimages/curl curl -v -H `"Content-Type: application/json`" -d `"{'APIPassword':'YOUR_API_PASSWORD'}`" http://host.containers.internal:8080/kabusapi/token"
     
     Write-Status "Running test command:"
     Write-Host $testCmd -ForegroundColor Cyan
@@ -345,12 +345,12 @@ function Get-HostIP {
             Write-Host "✅ Detected host IP: $primaryIP" -ForegroundColor Green
             return $primaryIP
         } else {
-            Write-Host "⚠️ Could not auto-detect IP, using default" -ForegroundColor Yellow
-            return "192.168.1.20"  # Fallback
+            Write-Host "⚠️ Could not auto-detect IP, using fallback" -ForegroundColor Yellow
+            return "192.168.1.100"  # Example fallback IP
         }
     } catch {
-        Write-Host "⚠️ Error detecting IP, using default" -ForegroundColor Yellow
-        return "192.168.1.20"  # Fallback
+        Write-Host "⚠️ Error detecting IP, using fallback" -ForegroundColor Yellow
+        return "192.168.1.100"  # Example fallback IP
     }
 }
 

@@ -158,7 +158,7 @@ powershell -ExecutionPolicy Bypass -File setup-windows.ps1
 .\podman-run.ps1 proxy
 
 # または直接テスト
-podman run --rm -it --add-host host.containers.internal:192.168.1.20 curlimages/curl curl -v -H "Content-Type: application/json" -d "{'APIPassword':'APIKensyou'}" http://host.containers.internal:8080/kabusapi/token
+podman run --rm -it --add-host host.containers.internal:YOUR_WINDOWS_IP curlimages/curl curl -v -H "Content-Type: application/json" -d "{'APIPassword':'YOUR_API_PASSWORD'}" http://host.containers.internal:8080/kabusapi/token
 ```
 
 ## トラブルシューティング
