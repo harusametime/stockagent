@@ -180,43 +180,51 @@ class KabusAPIClient:
                 url = f"{self.base_url}/board/{api_symbol}"
                 headers = self.get_token_header()
                 
-                print(f"💰 Getting market price for {symbol} -> {api_symbol}")
+                print(f"💰 現在価格を取得中: {symbol} -> {api_symbol}")
                 
                 response = requests.get(url, headers=headers, timeout=10)
                 response.raise_for_status()
                 
                 result = response.json()
-                print(f"📊 Board response for {symbol}: {result}")
+                print(f"📊 Board API レスポンス for {symbol}: {result}")
                 
-                # Extract current price from board data
-                if result.get('ResultCode') == 0:
-                    board_data = result.get('Board', {})
-                    current_price = board_data.get('CurrentPrice')
-                    if current_price:
-                        prices[symbol] = float(current_price)
-                        print(f"✅ Got price for {symbol}: ¥{current_price}")
-                    else:
-                        print(f"⚠️ No current price found for {symbol}")
+                # KabusAPI board endpoint returns CurrentPrice directly (no nested ResultCode)
+                current_price = result.get('CurrentPrice')
+                if current_price is not None:
+                    prices[symbol] = float(current_price)
+                    print(f"✅ KabusAPIから価格取得成功 {symbol}: ¥{current_price:,.2f}")
                 else:
-                    print(f"❌ Board API error for {symbol}: {result.get('ResultText', 'Unknown error')}")
+                    print(f"⚠️ CurrentPriceが見つかりません for {symbol}")
+                    # Check for other possible price fields
+                    for price_field in ['BidPrice', 'AskPrice', 'PrevClosePrice']:
+                        if result.get(price_field) is not None:
+                            prices[symbol] = float(result[price_field])
+                            print(f"✅ 代替価格フィールド使用 {symbol} ({price_field}): ¥{result[price_field]:,.2f}")
+                            break
+                    else:
+                        print(f"⚠️ 利用可能な価格フィールドがありません for {symbol}")
+                        raise ValueError("No price data available from KabusAPI")
                     
             except Exception as e:
-                print(f"❌ Error getting price for {symbol}: {str(e)}")
+                print(f"❌ KabusAPIエラー for {symbol}: {str(e)}")
                 # Fallback to yfinance
                 try:
+                    print(f"🔄 Yahoo Finance にフォールバック for {symbol}")
                     ticker = yf.Ticker(symbol)
                     current_price = ticker.info.get('regularMarketPrice')
                     if current_price:
                         prices[symbol] = current_price
-                        print(f"✅ Got fallback price for {symbol}: ¥{current_price}")
+                        print(f"✅ Yahoo Finance価格取得 {symbol}: ¥{current_price:,.2f}")
                     else:
                         # Get latest close price
                         hist = ticker.history(period='1d')
                         if not hist.empty:
                             prices[symbol] = hist['Close'].iloc[-1]
-                            print(f"✅ Got fallback close price for {symbol}: ¥{hist['Close'].iloc[-1]}")
+                            print(f"✅ Yahoo Finance終値取得 {symbol}: ¥{hist['Close'].iloc[-1]:,.2f}")
+                        else:
+                            print(f"❌ Yahoo Financeでもデータなし for {symbol}")
                 except Exception as fallback_error:
-                    print(f"❌ Fallback error for {symbol}: {str(fallback_error)}")
+                    print(f"❌ フォールバックエラー for {symbol}: {str(fallback_error)}")
                     
         return prices
     
